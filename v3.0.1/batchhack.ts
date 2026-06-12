@@ -5,14 +5,20 @@ export async function main(ns: NS) {
   const fanout = (ns.args[3] as boolean) ?? false
   const dryrun = (ns.args[4] as boolean) ?? false
 
-  const data = collectData(ns, targetName, scriptHostName, dryrun)
+  const serverInfoFile = "zserverinfo.json"
+  const allservers: Info[] = JSON.parse(ns.read(serverInfoFile))
+  const target = allservers.find(s => s.Svr.hostname == targetName)!.Svr
+  const hostServer = allservers.find(s => s.Svr.hostname == scriptHostName)!.Svr
+  const person = ns.getPlayer()
+
+  const data = collectData(ns, person, target, hostServer, dryrun)
 
   if (dryrun) {
     ns.ui.openTail()
     return
   }
 
-  const linkScript = "runonfinish.ts"
+  const linkScript = "qlink.ts"
   const batchScriptName = ns.getScriptName()
 
   if (scriptHostName != "home")
@@ -23,10 +29,10 @@ export async function main(ns: NS) {
 
   const sleepPerBatch = 5000
   const toCoverWeakenTime = Math.floor(data.weakenTim / sleepPerBatch)
-  const fiveMinutes = 5 * 60 * 1000
+  const limitMinutes = 15 * 60 * 1000
   let batchCount = data.howManyBatch
   if (batchCount > toCoverWeakenTime) batchCount = toCoverWeakenTime
-  if (batchCount > fiveMinutes) batchCount = fiveMinutes
+  if (batchCount > limitMinutes) batchCount = limitMinutes
   const concurrentCount = fanout ? batchCount : 1
 
   for (let i = 1; i <= concurrentCount; i++) {
@@ -62,16 +68,12 @@ type BatchData = {
   howManyBatch: number
 }
 
-function collectData(ns: NS, targetName: string, scriptHostName: string, dryrun: boolean): BatchData {
-  const person = ns.getPlayer()
-  const target = ns.getServer(targetName)
-  const hostServer = ns.getServer(scriptHostName)
-
+function collectData(ns: NS, person: Player, target: Server, hostServer: Server, dryrun: boolean): BatchData {
   const hackPct = ns.formulas.hacking.hackPercent(target, person)
   let hackThread = (hackPct >= 0.2)
     ? 1
     : Math.floor(0.2 / hackPct)
-  const hackSecurity = ns.hackAnalyzeSecurity(hackThread, targetName)
+  const hackSecurity = ns.hackAnalyzeSecurity(hackThread, target.hostname)
   const weakenEff = ns.formulas.hacking.weakenEffect(1, hostServer.cpuCores)
   const hackWeakenThread = Math.ceil(hackSecurity / weakenEff)
 
@@ -94,11 +96,11 @@ function collectData(ns: NS, targetName: string, scriptHostName: string, dryrun:
     growWeakenThread: growWeakenThread,
   })
 
-  const hackScriptName = "onlyhack.ts"
+  const hackScriptName = "qohack.ts"
   const hackScriptSize = ns.getScriptRam(hackScriptName)
-  const weakenScriptName = "onlyweaken.ts"
+  const weakenScriptName = "qoweaken.ts"
   const weakenScriptSize = ns.getScriptRam(weakenScriptName)
-  const growScriptName = "onlygrow.ts"
+  const growScriptName = "qogrow.ts"
   const growScriptSize = ns.getScriptRam(growScriptName)
   const batchMemory = hackThread * hackScriptSize
     + hackWeakenThread * weakenScriptSize
@@ -149,4 +151,10 @@ function collectData(ns: NS, targetName: string, scriptHostName: string, dryrun:
     weakenTim: weakenTim,
     howManyBatch: howManyBatch,
   }
+}
+
+type Info = {
+  Svr: Server
+  Dep: number
+  Parent: string
 }

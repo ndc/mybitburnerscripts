@@ -23,12 +23,16 @@ export async function main(ns: NS) {
 
   scanRec(originaltarget, 0)
 
-  if (!!portNumber) ns.tryWritePort(portNumber, [ns.pid, ns.getHostname()])
+  if (!!portNumber) ns.tryWritePort(portNumber, `Scan ${ns.pid} finished`)
 
   function process(svrName: string) {
-    const scriptName = 'operate.ts'
+    const scriptName = 'qoperate.ts'
+    const weakenScript = "qoweaken.ts"
+    const weakenLoopScript = "qoweakenloop.ts"
     if (ns.hasRootAccess(svrName)) {
-      if (ns.scriptRunning(scriptName, svrName)) {
+      if (ns.scriptRunning(scriptName, svrName)
+        || ns.scriptRunning(weakenScript, svrName)
+        || ns.scriptRunning(weakenLoopScript, svrName)) {
         return 0
       }
       return runOp(svrName, scriptName)
@@ -50,7 +54,6 @@ export async function main(ns: NS) {
   }
 
   function runOp(svrName: string, scriptName: string) {
-    if ([""].includes(svrName)) return 0
     const threadCount = Math.floor(ns.getServerMaxRam(svrName) / ns.getScriptRam(scriptName))
     if (threadCount < 1) return 0
     const weakenEnd = ns.getServerMinSecurityLevel(svrName)

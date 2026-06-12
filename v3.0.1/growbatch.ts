@@ -1,30 +1,42 @@
 export async function main(ns: NS) {
-  const target = (ns.args[0] as string)
+  const scriptHostName = (ns.args[0] as string) ?? "home"
   const dryrun = (ns.args[1] as boolean) ?? false
+  const target = (ns.args[2] as string)
 
-  const scriptHostName = "home"
-  const scriptHost = ns.getServer(scriptHostName)
+  ns.disableLog("ALL")
+
+  const serverInfoFile = "zserverinfo.json"
+  const allservers: Info[] = JSON.parse(ns.read(serverInfoFile))
+  const scriptHost = allservers.find(s => s.Svr.hostname == scriptHostName)!.Svr
   let remainingRam = scriptHost.maxRam - scriptHost.ramUsed
+
+  const person = ns.getPlayer()
 
   let targets: string[]
   if (!!target) {
     targets = [target]
   } else {
-    targets = pickServers(ns, scanNames(ns))
+    targets = pickServers(ns, allservers, person.skills.hacking)
   }
 
   while (targets.length > 0) {
     const targetName = targets[0]
     targets = targets.slice(1)
 
-    const data = collectData(ns, targetName, scriptHostName, dryrun)
+    const target = allservers.find(s => s.Svr.hostname == targetName)!.Svr
+    const data = collectData(ns, target, scriptHost, dryrun, person)
+    ns.printf("%j", data)
 
     if (dryrun) {
       ns.ui.openTail()
       return
     }
 
-    if (remainingRam < data.batchMemory) return
+    if (remainingRam < data.batchMemory) {
+      ns.printf(`Remaining ${remainingRam} script ${data.batchMemory}`)
+      continue
+    }
+
     remainingRam -= data.batchMemory
 
     if (scriptHostName != "home")
@@ -49,11 +61,7 @@ type BatchData = {
   batchMemory: number
 }
 
-function collectData(ns: NS, targetName: string, scriptHostName: string, dryrun: boolean): BatchData {
-  const person = ns.getPlayer()
-  const target = ns.getServer(targetName)
-  const hostServer = ns.getServer(scriptHostName)
-
+function collectData(ns: NS, target: Server, hostServer: Server, dryrun: boolean, person: Player): BatchData {
   const weakenEff = ns.formulas.hacking.weakenEffect(1, hostServer.cpuCores)
   const prepWeakenThread = Math.ceil(
     ((target.hackDifficulty ?? 0) - (target.minDifficulty ?? 0)) / weakenEff)
@@ -73,9 +81,9 @@ function collectData(ns: NS, targetName: string, scriptHostName: string, dryrun:
     growWeakenThread: growWeakenThread,
   })
 
-  const weakenScriptName = "onlyweaken.ts"
+  const weakenScriptName = "qoweaken.ts"
   const weakenScriptSize = ns.getScriptRam(weakenScriptName)
-  const growScriptName = "onlygrow.ts"
+  const growScriptName = "qogrow.ts"
   const growScriptSize = ns.getScriptRam(growScriptName)
   const batchMemory = prepWeakenThread * weakenScriptSize
     + growThr * growScriptSize
@@ -110,16 +118,16 @@ function collectData(ns: NS, targetName: string, scriptHostName: string, dryrun:
   }
 }
 
-function pickServers(ns: NS, allservers: Info[]) {
-  const hackingLevel = ns.getHackingLevel()
+function pickServers(ns: NS, allservers: Info[], hackingLevel: number) {
   const result = allservers
     .filter(s => s.Svr.hasAdminRights)
     .filter(s => (s.Svr.moneyMax ?? 0) > 0)
     .filter(s => (s.Svr.moneyAvailable ?? 0) < (s.Svr.moneyMax ?? 0) * 1 / 3)
     //.filter(s => s.Svr.maxRam > 0)
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < (hackingLevel * 2 / 3))
-    .sort((a, b) => (a.Svr.moneyMax ?? 0) - (b.Svr.moneyMax ?? 0))
+    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < (hackingLevel * 1 / 2))
+    .sort((a, b) => (b.Svr.serverGrowth ?? 0) - (a.Svr.serverGrowth ?? 0))
     .map(s => s.Svr.hostname)
+  ns.printf("Pick: %j", result)
   return result
 }
 
@@ -127,21 +135,4 @@ type Info = {
   Svr: Server
   Dep: number
   Parent: string
-}
-
-function scanNames(ns: NS): Info[] {
-  const processed: string[] = []
-  return scanNames2("home", 0, "")
-
-  function scanNames2(server: string, depth: number, parent: string): Info[] {
-    processed.push(server)
-    const links = ns.scan(server).filter(s => !processed.includes(s))
-    //ns.printf("scanning %s got %j", server, links)
-    const selfinfo = { Svr: ns.getServer(server), Dep: depth, Parent: parent } as Info
-    if (links.length < 1) return [selfinfo]
-    return links.reduce(
-      (results, link): Info[] => results.concat(...scanNames2(link, depth + 1, server)),
-      [selfinfo]
-    )
-  }
 }

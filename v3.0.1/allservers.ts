@@ -3,26 +3,10 @@ export async function main(ns: NS) {
 
   const allservers = scanNames(ns)
 
-  printservers(ns, allservers)
-}
-
-function printservers(ns: NS, allservers: Info[]) {
-  const result = allservers.map(s => ({
-    hostname: s.Svr.hostname,
-    moneyMax: s.Svr.moneyMax ?? 0,
-    serverGrowth: s.Svr.serverGrowth ?? 0,
-    requiredHackingSkill: s.Svr.requiredHackingSkill ?? 0,
-    minDifficulty: s.Svr.minDifficulty,
-    numOpenPortsRequired: s.Svr.numOpenPortsRequired,
-    maxRam: s.Svr.maxRam,
-    cpuCores: s.Svr.cpuCores,
-    parent: s.Parent
-  }))
-    //.filter(s => s.requiredHackingSkill <= 500)
-    .sort((a, b) => b.moneyMax - a.moneyMax)
-  //.slice(0, 10)
-  ns.printf("%j", result)
-  ns.ui.openTail()
+  const filecontent = JSON.stringify(allservers)
+  const filename = "zserverinfo.json"
+  ns.write(filename, filecontent, "w")
+  ns.tprintf(`Updated ${filename}`)
 }
 
 type Info = {

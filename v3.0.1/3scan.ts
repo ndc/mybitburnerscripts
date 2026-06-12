@@ -1,21 +1,26 @@
 export async function main(ns: NS) {
-  await goodRatioServer(ns)
+  ns.disableLog("ALL")
+  const result = goodHost(ns)
+  ns.printf("%j", result)
+  ns.ui.openTail()
 }
 
-function goodRatioServer(ns: NS) {
-  ns.disableLog("ALL")
-  const allServers = scanNames(ns)
-  const ordered = allServers
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < ns.getHackingLevel() / 2)
-    .filter(s => s.Svr.maxRam < 1)
+function goodHost(ns: NS) {
+  const serverInfoFile = "zserverinfo.json"
+  const hackLvl = ns.getHackingLevel()
+  const allservers: Info[] = JSON.parse(ns.read(serverInfoFile))
+  return allservers
+    .filter(s => s.Svr.hasAdminRights)
+    .filter(s => (s.Svr.requiredHackingSkill ?? 0) >= hackLvl * 1 / 3)
+    .filter(s => s.Svr.maxRam > 0)
     .map(s => ({
-      Name: s.Svr.hostname,
-      Ratio: (s.Svr.moneyMax ?? 0) / (s.Svr.minDifficulty ?? 1),
-      Level: s.Svr.requiredHackingSkill
+      hostname: s.Svr.hostname,
+      cpuCores: s.Svr.cpuCores,
+      maxRam: s.Svr.maxRam,
+      requiredHackingSkill: s.Svr.requiredHackingSkill,
     }))
-    .sort((a, b) => b.Ratio - a.Ratio)
-  ns.printf("%j", ordered)
-  ns.ui.openTail()
+    .toSorted((a, b) => b.cpuCores - a.cpuCores
+      || b.maxRam - a.maxRam)
 }
 
 type Info = {
@@ -24,24 +29,25 @@ type Info = {
   Parent: string
 }
 
-function scanNames(ns: NS): Info[] {
-  const processed: string[] = []
-  return scanNames2("home", 0, "")
-
-  function scanNames2(server: string, depth: number, parent: string): Info[] {
-    processed.push(server)
-    const links = ns.scan(server).filter(s => !processed.includes(s))
-    //ns.printf("scanning %s got %j", server, links)
-    const selfinfo = { Svr: ns.getServer(server), Dep: depth, Parent: parent } as Info
-    if (links.length < 1) return [selfinfo]
-    return links.reduce(
-      (results, link): Info[] => results.concat(...scanNames2(link, depth + 1, server)),
-      [selfinfo]
-    )
-  }
-}
-
 /*
+
+function goodHost(ns: NS) {
+  const serverInfoFile = "zserverinfo.json"
+  const hackLvl = ns.getHackingLevel()
+  const allservers: Info[] = JSON.parse(ns.read(serverInfoFile))
+  return allservers
+    .filter(s => s.Svr.hasAdminRights)
+    .filter(s => (s.Svr.requiredHackingSkill ?? 0) >= hackLvl / 2)
+    .filter(s => s.Svr.maxRam > 0)
+    .map(s => ({
+      hostname: s.Svr.hostname,
+      cpuCores: s.Svr.cpuCores,
+      maxRam: s.Svr.maxRam,
+      requiredHackingSkill: s.Svr.requiredHackingSkill,
+    }))
+    .toSorted((a, b) => b.cpuCores - a.cpuCores
+      || b.maxRam - a.maxRam)
+}
 
 function learnFunctions(ns: NS) {
   let person = ns.getPlayer()
@@ -94,19 +100,20 @@ function learnFunctions(ns: NS) {
 }
 
 function goodRatioServer(ns: NS) {
-  ns.disableLog("ALL")
-  const allServers = scanNames(ns)
-  const ordered = allServers
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < ns.getHackingLevel() / 2)
-    .filter(s => s.Svr.maxRam < 1)
+  const serverInfoFile = "zserverinfo.json"
+  const hackLvl = ns.getHackingLevel()
+  const allServers: Info[] = JSON.parse(ns.read(serverInfoFile))
+  return allServers
+    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < hackLvl / 2)
     .map(s => ({
-      Name: s.Svr.hostname,
-      Ratio: (s.Svr.moneyMax ?? 0) / (s.Svr.minDifficulty ?? 1),
-      Level: s.Svr.requiredHackingSkill
+      hostname: s.Svr.hostname,
+      moneyMax: s.Svr.moneyMax,
+      minDifficulty: s.Svr.minDifficulty,
+      ratio: (s.Svr.moneyMax ?? 0) / (s.Svr.minDifficulty ?? 1),
+      requiredHackingSkill: s.Svr.requiredHackingSkill!,
     }))
-    .sort((a, b) => b.Ratio - a.Ratio)
-  ns.printf("%j", ordered)
-  ns.ui.openTail()
+    .toSorted((a, b) => b.ratio - a.ratio
+      || a.requiredHackingSkill - b.requiredHackingSkill)
 }
 
 type Info = {
