@@ -7,7 +7,7 @@ export async function main(ns: NS) {
   const result = allservers
     .filter(s => (s.Svr.requiredHackingSkill ?? 0) < (hackLvl * 1 / 2))
     .filter(s => (s.Svr.moneyMax ?? 0) > 0)
-    .filter(s => ns.getServerMoneyAvailable(s.Svr.hostname) < 0.8 * (s.Svr.moneyMax ?? 0))
+    //.filter(s => ns.getServerMoneyAvailable(s.Svr.hostname) < 0.8 * (s.Svr.moneyMax ?? 0))
     .map(s => ({
       hostname: s.Svr.hostname,
       moneyMax: s.Svr.moneyMax,
