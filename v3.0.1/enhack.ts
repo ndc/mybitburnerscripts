@@ -35,7 +35,7 @@ export async function main(ns: NS) {
   if (batch.batchMemory > availMemory) {
     ns.tprintf(`${batchScriptName}: not enough memory in ${hostname1}, ${availMemory} available`)
     ns.tprintf("%j", batch)
-    return
+    return batch.batchMemory
   }
 
   // @ignore-infinite
@@ -56,7 +56,7 @@ export async function main(ns: NS) {
 
   if (dryrun) {
     ns.ui.openTail()
-    return
+    return batch.batchMemory
   }
 
   globalThis.bitburnerPortCounter += 1
@@ -79,6 +79,8 @@ export async function main(ns: NS) {
   if (apid == 0) ns.tprintf(`Failed to run ${growScriptName}`)
   apid = ns.exec(weakenScriptName, scriptHost.hostname, batch.growWeakenThread, target.hostname, 0, batchFinishedPort)
   if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
+
+  return batch.batchMemory
 }
 
 type BatchSize = {

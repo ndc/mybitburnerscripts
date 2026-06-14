@@ -1,7 +1,7 @@
 export async function main(ns: NS) {
-  const scriptHostName = (ns.args[0] as string) ?? "home"
-  const targetName = (ns.args[1] as string)
-  const dryrun = (ns.args[2] as boolean) ?? false
+  const targetName = (ns.args[0] as string)
+  const dryrun = (ns.args[1] as boolean) ?? false
+  const scriptHostName = (ns.args[2] as string) ?? "home"
 
   ns.disableLog("ALL")
 
@@ -21,21 +21,29 @@ export async function main(ns: NS) {
     return
   }
 
-  let remainingRam = scriptHost.maxRam - scriptHost.ramUsed
+  const buffer = (scriptHostName == "home") ? 64 : 0
+  let remainingRam = scriptHost.maxRam - scriptHost.ramUsed - buffer
   if (remainingRam < data.batchMemory) {
-    ns.printf(`Remaining ${remainingRam} script ${data.batchMemory}`)
+    ns.printf(`Not enough memory, script ${data.batchMemory} available ${remainingRam} `)
     return
   }
 
   if (scriptHostName != "home")
     ns.scp([weakenScriptName, growScriptName], scriptHostName)
 
-  if (data.prepWeakenThread > 0)
-    ns.exec(weakenScriptName, scriptHostName, data.prepWeakenThread, targetName, 0)
-  if (data.growThr > 0)
-    ns.exec(growScriptName, scriptHostName, data.growThr, targetName, data.growDelay + 1)
-  if (data.growWeakenThread > 0)
-    ns.exec(weakenScriptName, scriptHostName, data.growWeakenThread, targetName, 2)
+  let apid = 0
+  if (data.prepWeakenThread > 0) {
+    apid = ns.exec(weakenScriptName, scriptHostName, data.prepWeakenThread, targetName, 0)
+    if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
+  }
+  if (data.growThr > 0) {
+    apid = ns.exec(growScriptName, scriptHostName, data.growThr, targetName, data.growDelay + 1)
+    if (apid == 0) ns.tprintf(`Failed to run ${growScriptName}`)
+  }
+  if (data.growWeakenThread > 0) {
+    apid = ns.exec(weakenScriptName, scriptHostName, data.growWeakenThread, targetName, 2)
+    if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
+  }
 }
 
 type BatchData = {
@@ -72,8 +80,6 @@ function collectData(ns: NS, target: Server, hostServer: Server, person: Player,
     + growWeakenThread * weakenScriptSize
 
   if (dryrun) ns.printf("%j", {
-    weakenScriptSize: weakenScriptSize,
-    growScriptSize: growScriptSize,
     batchMemory: batchMemory,
   })
 
