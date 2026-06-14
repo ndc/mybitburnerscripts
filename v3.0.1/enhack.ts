@@ -3,6 +3,8 @@ export async function main(ns: NS) {
 
   ns.disableLog("ALL")
 
+  await ns.sleep(1)
+
   const hackScriptName = "qohack.ts"
   const hackScriptSize = 1.7
   const weakenScriptName = "qoweaken.ts"
@@ -10,6 +12,7 @@ export async function main(ns: NS) {
   const growScriptName = "qogrow.ts"
   const growScriptSize = 1.75
   const linkScript = "qlink.ts"
+  const linkScriptSize = 2.9
   const batchScriptName = ns.getScriptName()
 
   const target = ns.getServer(target1 as string)
@@ -24,26 +27,32 @@ export async function main(ns: NS) {
 
   globalThis.bitburnerPortCounter = globalThis.bitburnerPortCounter ?? 0
 
-  let threadCount = 0
-  // @ignore-infinite
-  while (true) {
-    const batchSize = calculateBatchSize(ns, target, scriptHost, person,
-      threadCount + 1, hackScriptSize, growScriptSize, weakenScriptSize)
-    ns.printf("%j", batchSize)
-    if (batchSize.batchMemory > scriptHost.maxRam) break
-    if (batchSize.hackAmt > (target.moneyMax ?? 0)) break
-    threadCount++
-  }
-
-  if (threadCount < 1) {
-    ns.printf("Not enough memory")
+  let threadCount = 1
+  const buffer = (scriptHost.hostname == "home") ? 64 : 0
+  const availMemory = scriptHost.maxRam - scriptHost.ramUsed - buffer
+  let batch = calculateBatchSize(ns, target, scriptHost, person,
+    threadCount, hackScriptSize, growScriptSize, weakenScriptSize, linkScriptSize)
+  if (batch.batchMemory > availMemory) {
+    ns.tprintf(`${batchScriptName}: not enough memory in ${hostname1}, ${availMemory} available`)
+    ns.tprintf("%j", batch)
     return
   }
 
-  const batchSize = calculateBatchSize(ns, target, scriptHost, person,
-    threadCount, hackScriptSize, growScriptSize, weakenScriptSize)
+  // @ignore-infinite
+  while (true) {
+    const tryThread = threadCount + 1
+    const tryBatch = calculateBatchSize(ns, target, scriptHost, person,
+      tryThread, hackScriptSize, growScriptSize, weakenScriptSize, linkScriptSize)
+
+    if (tryBatch.batchMemory > availMemory) break
+    if (tryBatch.hackPct > 0.2) break
+
+    batch = tryBatch
+    threadCount = tryThread
+  }
+
   ns.printf(`Using ${threadCount} hack threads`)
-  ns.printf("%j", batchSize)
+  ns.printf("%j", batch)
 
   if (dryrun) {
     ns.ui.openTail()
@@ -54,21 +63,26 @@ export async function main(ns: NS) {
   const batchFinishedPort = globalThis.bitburnerPortCounter
 
   if (scriptHost.hostname != "home")
-    ns.scp([hackScriptName, weakenScriptName, growScriptName], scriptHost.hostname)
+    ns.scp([hackScriptName, weakenScriptName, growScriptName, linkScript], scriptHost.hostname)
 
   const batchArgs = [target.hostname, false, scriptHost.hostname]
   const linkArgs = [batchFinishedPort, batchScriptName, "home", 1, ...batchArgs]
-  ns.exec(linkScript, "home", 1, ...linkArgs)
+  let apid = ns.exec(linkScript, scriptHost.hostname, 1, ...linkArgs)
+  if (apid == 0) ns.tprintf(`Failed to run ${linkScript}`)
   await ns.sleep(1)  // wait for port listener to be ready
 
-  ns.exec(hackScriptName, scriptHost.hostname, threadCount, target.hostname, hackDelay)
-  ns.exec(weakenScriptName, scriptHost.hostname, batchSize.hackWeakenThread, target.hostname, 1)
-  ns.exec(growScriptName, scriptHost.hostname, batchSize.growThr, target.hostname, growDelay + 2)
-  ns.exec(weakenScriptName, scriptHost.hostname, batchSize.growWeakenThread, target.hostname, 3, batchFinishedPort)
+  apid = ns.exec(hackScriptName, scriptHost.hostname, threadCount, target.hostname, hackDelay)
+  if (apid == 0) ns.tprintf(`Failed to run ${hackScriptName}`)
+  apid = ns.exec(weakenScriptName, scriptHost.hostname, batch.hackWeakenThread, target.hostname, 0)
+  if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
+  apid = ns.exec(growScriptName, scriptHost.hostname, batch.growThr, target.hostname, growDelay + 0)
+  if (apid == 0) ns.tprintf(`Failed to run ${growScriptName}`)
+  apid = ns.exec(weakenScriptName, scriptHost.hostname, batch.growWeakenThread, target.hostname, 0, batchFinishedPort)
+  if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
 }
 
 type BatchSize = {
-  hackAmt: number
+  hackPct: number
   hackWeakenThread: number
   hackEffect: number
   growThr: number
@@ -78,25 +92,24 @@ type BatchSize = {
 }
 
 function calculateBatchSize(ns: NS, target: Server, host: Server, person: Player,
-  threadCount: number, hackScriptSize: number, growScriptSize: number, weakenScriptSize: number)
+  threadCount: number, hackScriptSize: number, growScriptSize: number, weakenScriptSize: number, linkScriptSize: number)
   : BatchSize {
-  target.moneyAvailable = target.moneyMax
-  target.hackDifficulty = target.minDifficulty
   const hackPct = threadCount * ns.formulas.hacking.hackPercent(target, person)
-  const hackAmt = hackPct * (target.moneyMax ?? 0)
   const hackEffect = ns.hackAnalyzeSecurity(threadCount, undefined)
   const weakenEff = ns.formulas.hacking.weakenEffect(1, host.cpuCores)
   const hackWeakenThread = Math.ceil(hackEffect / weakenEff)
-  target.moneyAvailable = (target.moneyMax ?? 0) - hackAmt
-  const growThr = ns.formulas.hacking.growThreads(target, person, target.moneyMax ?? 0, host.cpuCores)
+  const cloneTarget = structuredClone(target)
+  cloneTarget.moneyAvailable = (1 - hackEffect) * (target.moneyMax ?? 0)
+  const growThr = ns.formulas.hacking.growThreads(cloneTarget, person, target.moneyMax ?? 0, host.cpuCores)
   const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, host.cpuCores)
   const growWeakenThread = Math.ceil(growEffect / weakenEff)
-  const batchMemory = hackScriptSize * threadCount
+  const batchMemory = linkScriptSize
+    + hackScriptSize * threadCount
     + weakenScriptSize * hackWeakenThread
     + growScriptSize * growThr
     + weakenScriptSize * growWeakenThread
   return {
-    hackAmt: hackAmt,
+    hackPct: hackPct,
     hackWeakenThread: hackWeakenThread,
     hackEffect: hackEffect,
     growThr: growThr,

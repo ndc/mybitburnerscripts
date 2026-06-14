@@ -57,9 +57,9 @@ function collectData(ns: NS, target: Server, hostServer: Server, person: Player,
     prepWeakenThread: prepWeakenThread
   })
 
-  const growEffect = ns.growthAnalyzeSecurity(1, undefined, hostServer.cpuCores)
   const growThr = ns.formulas.hacking.growThreads(target, person, target.moneyMax ?? 0, hostServer.cpuCores)
-  const growWeakenThread = Math.ceil(growEffect * growThr / weakenEff)
+  const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, hostServer.cpuCores)
+  const growWeakenThread = Math.ceil(growEffect / weakenEff)
 
   if (dryrun) ns.printf("%j", {
     growEffect: growEffect,

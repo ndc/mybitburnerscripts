@@ -1,35 +1,76 @@
 export async function main(ns: NS) {
   ns.disableLog("ALL")
-  const result = goodHost(ns)
-  ns.printf("%j", result)
-  ns.ui.openTail()
+  const results: { thr: number, pct: number, mem: number }[] = []
+  const host = ns.getServer("home")
+  const target = ns.getServer("silver-helix")
+  const person = ns.getPlayer()
+  const filename = "hack.txt"
+  let hackPct = 0
+  let hackThr = 1
+  while (hackPct < 1) {
+    const size = calculateBatchSize(ns, target, host, person, hackThr, 1.7, 1.75, 1.75, 2.9)
+    results.push({ thr: hackThr, pct: size.hackPct, mem: size.batchMemory })
+    const thebuffer = `${hackThr},${size.hackPct},${size.batchMemory},${size.growThr},${size.hackWeakenThread},${size.growWeakenThread}`
+    ns.write(filename, thebuffer, "a")
+    ns.write(filename, "\r\n", "a")
+    hackThr += 1
+    hackPct = size.hackPct
+  }
 }
 
-function goodHost(ns: NS) {
+type BatchSize = {
+  hackPct: number
+  hackWeakenThread: number
+  hackEffect: number
+  growThr: number
+  growWeakenThread: number
+  growEffect: number
+  batchMemory: number
+}
+
+function calculateBatchSize(ns: NS, target: Server, host: Server, person: Player,
+  threadCount: number, hackScriptSize: number, growScriptSize: number, weakenScriptSize: number, linkScriptSize: number)
+  : BatchSize {
+  const hackPct = threadCount * ns.formulas.hacking.hackPercent(target, person)
+  const hackEffect = ns.hackAnalyzeSecurity(threadCount, undefined)
+  const weakenEff = ns.formulas.hacking.weakenEffect(1, host.cpuCores)
+  const hackWeakenThread = Math.ceil(hackEffect / weakenEff)
+  const cloneTarget = structuredClone(target)
+  cloneTarget.moneyAvailable = (1 - hackEffect) * (target.moneyMax ?? 0)
+  const growThr = ns.formulas.hacking.growThreads(cloneTarget, person, target.moneyMax ?? 0, host.cpuCores)
+  const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, host.cpuCores)
+  const growWeakenThread = Math.ceil(growEffect / weakenEff)
+  const batchMemory = linkScriptSize
+    + hackScriptSize * threadCount
+    + weakenScriptSize * hackWeakenThread
+    + growScriptSize * growThr
+    + weakenScriptSize * growWeakenThread
+  return {
+    hackPct: hackPct,
+    hackWeakenThread: hackWeakenThread,
+    hackEffect: hackEffect,
+    growThr: growThr,
+    growWeakenThread: growWeakenThread,
+    growEffect: growEffect,
+    batchMemory: batchMemory,
+  }
+}
+
+function queryBase(ns: NS) {
   const serverInfoFile = "zserverinfo.json"
-  const hackLvl = ns.getHackingLevel()
-  const allservers: Info[] = JSON.parse(ns.read(serverInfoFile))
+  const allservers = (JSON.parse(ns.read(serverInfoFile)) as { Svr: Server }[])
+    .map(s => ns.getServer(s.Svr.hostname))
   return allservers
-    .filter(s => s.Svr.hasAdminRights)
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) >= hackLvl * 1 / 3)
-    .filter(s => s.Svr.maxRam > 0)
-    .map(s => ({
-      hostname: s.Svr.hostname,
-      cpuCores: s.Svr.cpuCores,
-      maxRam: s.Svr.maxRam,
-      requiredHackingSkill: s.Svr.requiredHackingSkill,
-    }))
-    .toSorted((a, b) => b.cpuCores - a.cpuCores
-      || b.maxRam - a.maxRam)
-}
-
-type Info = {
-  Svr: Server
-  Dep: number
-  Parent: string
 }
 
 /*
+
+function queryBase(ns: NS) {
+  const serverInfoFile = "zserverinfo.json"
+  const allservers = (JSON.parse(ns.read(serverInfoFile)) as { Svr: Server }[])
+    .map(s => ns.getServer(s.Svr.hostname))
+  return allservers
+}
 
 function goodHost(ns: NS) {
   const serverInfoFile = "zserverinfo.json"

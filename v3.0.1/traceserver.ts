@@ -1,16 +1,12 @@
 export async function main(ns: NS) {
-  ns.disableLog("ALL")
   const endserver = ns.args[0] as string ?? "run4theh111z"
+
+  ns.disableLog("ALL")
 
   const allservers = scanNames(ns, "home")
 
-  traceserver2(ns, allservers, endserver)
-}
-
-function traceserver2(ns: NS, allservers: Info[], endserver: string) {
   const traceresult = traceserver(allservers, endserver)
-  ns.printf("%j", traceresult)
-  ns.ui.openTail()
+  ns.tprintf("%j", traceresult)
 }
 
 function traceserver(allservers: Info[], endserver: string): string[] {
