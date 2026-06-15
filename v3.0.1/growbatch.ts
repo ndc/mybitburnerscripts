@@ -24,7 +24,7 @@ export async function main(ns: NS) {
   const buffer = (scriptHostName == "home") ? 64 : 0
   let remainingRam = scriptHost.maxRam - scriptHost.ramUsed - buffer
   if (remainingRam < data.batchMemory) {
-    ns.printf(`Not enough memory, script ${data.batchMemory} available ${remainingRam} `)
+    ns.tprintf(`${ns.getScriptName()}: not enough memory in ${scriptHostName}, ${data.batchMemory} needed ${remainingRam} available`)
     return
   }
 

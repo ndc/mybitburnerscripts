@@ -15,7 +15,6 @@ export async function main(ns: NS) {
     for (let i = 0; i < servers.length; i++) {
       const server = servers[i]
       const serverlevel = ns.getServerRequiredHackingLevel(server)
-      if (serverlevel > hacklevel) continue
       const pid = process(server)
       if (depth + 1 < maxDepth) scanRec(server, depth + 1)
     }

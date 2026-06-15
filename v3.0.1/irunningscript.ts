@@ -4,8 +4,7 @@ export async function main(ns: NS) {
   const hosts = queryBase(ns)
     .filter(s => ns.scriptRunning(scriptName, s.hostname))
     .map(s => s.hostname)
-  ns.printf("%j", hosts)
-  ns.ui.openTail()
+  ns.tprintf("%j", hosts)
 }
 
 function queryBase(ns: NS) {

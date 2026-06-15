@@ -13,7 +13,7 @@ export async function main(ns: NS) {
     .map(s => {
       const cloneTarget = structuredClone(s)
       cloneTarget.hackDifficulty = cloneTarget.minDifficulty
-      const weakTime = ns.formulas.hacking.weakenTime(cloneTarget, person)
+      const weakenMinute = ns.formulas.hacking.weakenTime(cloneTarget, person) / 1000 / 60
       return {
         hostname: s.hostname,
         moneyPct: (s.moneyAvailable ?? 0) / (s.moneyMax ?? 1),
@@ -22,7 +22,7 @@ export async function main(ns: NS) {
         hackDifficulty: s.hackDifficulty,
         ratio: (s.moneyMax ?? 0) / (s.minDifficulty ?? 1),
         requiredHackingSkill: s.requiredHackingSkill!,
-        weakTime: weakTime,
+        weakenMinute: weakenMinute,
         maxRam: s.maxRam,
         serverGrowth: s.serverGrowth,
       }

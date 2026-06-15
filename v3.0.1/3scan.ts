@@ -2,13 +2,13 @@ export async function main(ns: NS) {
   ns.disableLog("ALL")
   const results: { thr: number, pct: number, mem: number }[] = []
   const host = ns.getServer("home")
-  const target = ns.getServer("silver-helix")
+  const target = ns.getServer("omega-net")
   const person = ns.getPlayer()
   const filename = "hack.txt"
   let hackPct = 0
   let hackThr = 1
   while (hackPct < 1) {
-    const size = calculateBatchSize(ns, target, host, person, hackThr, 1.7, 1.75, 1.75, 2.9)
+    const size = calculateBatchSize(ns, target, host, person, hackThr, 1.7, 1.75, 1.75)
     results.push({ thr: hackThr, pct: size.hackPct, mem: size.batchMemory })
     const thebuffer = `${hackThr},${size.hackPct},${size.batchMemory},${size.growThr},${size.hackWeakenThread},${size.growWeakenThread}`
     ns.write(filename, thebuffer, "a")
@@ -29,7 +29,7 @@ type BatchSize = {
 }
 
 function calculateBatchSize(ns: NS, target: Server, host: Server, person: Player,
-  threadCount: number, hackScriptSize: number, growScriptSize: number, weakenScriptSize: number, linkScriptSize: number)
+  threadCount: number, hackScriptSize: number, growScriptSize: number, weakenScriptSize: number)
   : BatchSize {
   const hackPct = threadCount * ns.formulas.hacking.hackPercent(target, person)
   const hackEffect = ns.hackAnalyzeSecurity(threadCount, undefined)
@@ -40,8 +40,7 @@ function calculateBatchSize(ns: NS, target: Server, host: Server, person: Player
   const growThr = ns.formulas.hacking.growThreads(cloneTarget, person, target.moneyMax ?? 0, host.cpuCores)
   const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, host.cpuCores)
   const growWeakenThread = Math.ceil(growEffect / weakenEff)
-  const batchMemory = linkScriptSize
-    + hackScriptSize * threadCount
+  const batchMemory = hackScriptSize * threadCount
     + weakenScriptSize * hackWeakenThread
     + growScriptSize * growThr
     + weakenScriptSize * growWeakenThread

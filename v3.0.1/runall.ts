@@ -5,14 +5,16 @@ export async function main(ns: NS) {
   const hosts = queryBase(ns)
     .filter(s => s.hasAdminRights)
     .filter(s => (s.maxRam - s.ramUsed) > 4)
-    //.filter(s => !ns.scriptRunning("qoweaken.ts", s.hostname))
+    .filter(s => !ns.scriptRunning("qoweaken.ts", s.hostname))
     .filter(s => s.hostname != "home")
   let apid = 0
   for (let i = 0; i < hosts.length; i++) {
+    await ns.sleep(10)
     const host = hosts[i]
     ns.tprintf(`${host.hostname}`)
     apid = ns.exec(scriptName, "home", 1, targetName, false, host.hostname)
-    if (apid == 0) ns.tprintf(`Failed to run at ${host.hostname}`)
+    if (apid == 0)
+      ns.tprintf(`${ns.getScriptName()}: failed to run ${scriptName} for ${host.hostname}`)
   }
 }
 
