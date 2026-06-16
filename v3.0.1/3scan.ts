@@ -1,4 +1,22 @@
 export async function main(ns: NS) {
+  const a = ns.dnet.probe()
+  ns.tprintf("%j", a)
+  for(let i = 0;i<a.length;i++){
+    const b = ns.dnet.getServerDetails(a[i])
+    ns.tprintf("%j", b)
+  }
+}
+
+function queryBase(ns: NS) {
+  const serverInfoFile = "zserverinfo.json"
+  const allservers = (JSON.parse(ns.read(serverInfoFile)) as { Svr: Server }[])
+    .map(s => ns.getServer(s.Svr.hostname))
+  return allservers
+}
+
+/*
+
+function generateHackData(ns:NS){
   ns.disableLog("ALL")
   const results: { thr: number, pct: number, mem: number }[] = []
   const host = ns.getServer("home")
@@ -62,33 +80,6 @@ function queryBase(ns: NS) {
   return allservers
 }
 
-/*
-
-function queryBase(ns: NS) {
-  const serverInfoFile = "zserverinfo.json"
-  const allservers = (JSON.parse(ns.read(serverInfoFile)) as { Svr: Server }[])
-    .map(s => ns.getServer(s.Svr.hostname))
-  return allservers
-}
-
-function goodHost(ns: NS) {
-  const serverInfoFile = "zserverinfo.json"
-  const hackLvl = ns.getHackingLevel()
-  const allservers: Info[] = JSON.parse(ns.read(serverInfoFile))
-  return allservers
-    .filter(s => s.Svr.hasAdminRights)
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) >= hackLvl / 2)
-    .filter(s => s.Svr.maxRam > 0)
-    .map(s => ({
-      hostname: s.Svr.hostname,
-      cpuCores: s.Svr.cpuCores,
-      maxRam: s.Svr.maxRam,
-      requiredHackingSkill: s.Svr.requiredHackingSkill,
-    }))
-    .toSorted((a, b) => b.cpuCores - a.cpuCores
-      || b.maxRam - a.maxRam)
-}
-
 function learnFunctions(ns: NS) {
   let person = ns.getPlayer()
   //ns.tprintf("player: %j", person)
@@ -137,71 +128,6 @@ function learnFunctions(ns: NS) {
   ns.tprintf("get weaken time: %f", gWeakenT)
   const weakenT = ns.formulas.hacking.weakenTime(target, person)
   ns.tprintf("weaken time: %f", weakenT)
-}
-
-function goodRatioServer(ns: NS) {
-  const serverInfoFile = "zserverinfo.json"
-  const hackLvl = ns.getHackingLevel()
-  const allServers: Info[] = JSON.parse(ns.read(serverInfoFile))
-  return allServers
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < hackLvl / 2)
-    .map(s => ({
-      hostname: s.Svr.hostname,
-      moneyMax: s.Svr.moneyMax,
-      minDifficulty: s.Svr.minDifficulty,
-      ratio: (s.Svr.moneyMax ?? 0) / (s.Svr.minDifficulty ?? 1),
-      requiredHackingSkill: s.Svr.requiredHackingSkill!,
-    }))
-    .toSorted((a, b) => b.ratio - a.ratio
-      || a.requiredHackingSkill - b.requiredHackingSkill)
-}
-
-type Info = {
-  Svr: Server
-  Dep: number
-  Parent: string
-}
-
-function scanNames(ns: NS): Info[] {
-  const processed: string[] = []
-  return scanNames2("home", 0, "")
-
-  function scanNames2(server: string, depth: number, parent: string): Info[] {
-    processed.push(server)
-    const links = ns.scan(server).filter(s => !processed.includes(s))
-    //ns.printf("scanning %s got %j", server, links)
-    const selfinfo = { Svr: ns.getServer(server), Dep: depth, Parent: parent } as Info
-    if (links.length < 1) return [selfinfo]
-    return links.reduce(
-      (results, link): Info[] => results.concat(...scanNames2(link, depth + 1, server)),
-      [selfinfo]
-    )
-  }
-}
-
-function tryscan(ns: NS, server: string) {
-  const resultall = ns.scan(server)
-  const withouttarget = resultall.filter(s => s != server)
-  ns.printf("target: %j", server)
-  ns.printf("scan: %j", resultall)
-  ns.printf("filtered: %j", withouttarget)
-}
-
-function trygetserver(ns: NS, server: string) {
-  const info = ns.getServer(server)
-  ns.printf("%j", info)
-}
-
-async function tryport(ns: NS) {
-  const portNumber = 9
-  ns.exec("runonfinish.ts", "home", 1, portNumber, "scanprocess.ts", "home", 1)
-  await ns.sleep(10)
-  ns.writePort(portNumber, ["b", 2])
-}
-
-function tryweaken(ns: NS, server: string) {
-  const ana = ns.weakenAnalyze(230, 1)
-  ns.printf("weakenAnalyze %f threads: %f", 230, ana)
 }
 
 */

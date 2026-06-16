@@ -1,63 +1,55 @@
 export async function main(ns: NS) {
-  const allServers = scanNames(ns, "home")
-  const hackLevel = ns.getHackingLevel()
-  const processed = ns.cloud.getServerNames()
-  const cloudNamePrefix = "cloud."
-  const scriptName = 'operate.ts'
+  const currentServers = ns.cloud.getServerNames()
+  const buyCount = ns.cloud.getServerLimit() - currentServers.length
+  const memorySizes = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+  let playerMoney = ns.getPlayer().money
+  let chosenMemory = 0
+  let buyPrice = 0
+  for (let i = 0; i < memorySizes.length; i++) {
+    const memorySize = memorySizes[i]
+    const tryPrice = ns.cloud.getServerCost(memorySize) * buyCount
 
-  const unprocessed = allServers
-    .filter(s => (s.Svr.moneyMax ?? 0) > 25000000)
-    .filter(s => s.Svr.hasAdminRights)
-    .filter(s => s.Svr.maxRam < 1)
-    .filter(s => (s.Svr.requiredHackingSkill ?? 0) < (hackLevel / 3))
-    .filter(s => !processed.includes(cloudNamePrefix + s.Svr.hostname))
-  ns.tprintf("%j", unprocessed.map(u => u.Svr.hostname))
+    if (tryPrice > playerMoney) break
 
-  for (let i = 0; i < unprocessed.length; i++) {
-    const target = unprocessed[i]
-    const ramNeeded = 32
-    const cloudName = cloudNamePrefix + target.Svr.hostname
-    ns.cloud.purchaseServer(cloudName, ramNeeded)
-    runOp(ns, cloudName, target.Svr.hostname, scriptName)
+    chosenMemory = memorySize
+    buyPrice = tryPrice
+  }
+  if (chosenMemory > 0) {
+    for (let i = 0; i < buyCount; i++) {
+      const serverName = `cloud-${chosenMemory}-${String.fromCodePoint(97 + i)}`
+      const newName = ns.cloud.purchaseServer(serverName, chosenMemory)
+      playerMoney -= buyPrice
+      ns.tprint(`Bought ${newName} for ${buyPrice}`)
+    }
+  }
+
+  let toUpgrade = lowestServer(ns)
+  while (!!toUpgrade) {
+    const nextSize = memorySizes
+      .filter(s => s > toUpgrade!.memory)
+      .toSorted((a, b) => a - b)
+      .find(m => true)
+    if (!nextSize) break  // at max ram
+
+    const upgradePrice = ns.cloud.getServerUpgradeCost(toUpgrade.name, nextSize)
+    if (upgradePrice > playerMoney) break
+
+    if (ns.cloud.upgradeServer(toUpgrade.name, nextSize)) {
+      const replaceThis = new RegExp(`-${toUpgrade.memory}-`)
+      const newName = toUpgrade.name.replace(replaceThis, `-${nextSize}-`)
+      ns.cloud.renameServer(toUpgrade.name, newName)
+      ns.tprint(`Upgraded ${toUpgrade.name} to ${nextSize} for ${upgradePrice} becoming ${newName}`)
+    }
+
+    toUpgrade = lowestServer(ns)
   }
 }
 
-function runOp(ns: NS, cserver: string, target: string, scriptName: string) {
-  const threadCount = Math.floor(ns.getServerMaxRam(cserver) / ns.getScriptRam(scriptName))
-  if (threadCount < 1) return 0
-  const weakenEnd = ns.getServerMinSecurityLevel(target)
-  const weakenStart = weakenEnd + 1
-  const growEnd = ns.getServerMaxMoney(target)
-  if (growEnd < 1) return 0
-  const growStart = growEnd * 0.9
-  ns.scp(scriptName, cserver)
-  ns.printf("start %s %f", cserver, threadCount)
-  return ns.exec(scriptName, cserver, threadCount, target, weakenStart, weakenEnd, growStart, growEnd)
-}
-
-type Info = {
-  Svr: Server
-  Dep: number
-  Parent: string
-}
-
-function scanNames(ns: NS, server2: string): Info[] {
-  const processed: string[] = []
-  return scanNames2(server2, 0, "")
-
-  function scanNames2(server: string, depth: number, parent: string): Info[] {
-    processed.push(server)
-    const links = ns.scan(server).filter(s => !processed.includes(s))
-    //ns.printf("scanning %s got %j", server, links)
-    const selfinfo = {
-      Svr: ns.getServer(server),
-      Dep: depth,
-      Parent: parent,
-    } as Info
-    if (links.length < 1) return [selfinfo]
-    return links.reduce(
-      (results, link): Info[] => results.concat(...scanNames2(link, depth + 1, server)),
-      [selfinfo]
-    )
-  }
+function lowestServer(ns: NS) {
+  const servers = ns.cloud.getServerNames()
+  const lowest = servers
+    .map(s => ({ name: s, memory: ns.getServerMaxRam(s) }))
+    .toSorted((a, b) => a.memory - b.memory)
+    .find(s => true)
+  return lowest
 }
