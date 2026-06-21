@@ -3,7 +3,7 @@ export async function main(ns: NS) {
 
   ns.disableLog("ALL")
 
-  await ns.sleep(1)
+  await ns.sleep(4)
 
   const hackScriptName = "qohack.ts"
   const hackScriptSize = 1.7
@@ -26,8 +26,8 @@ export async function main(ns: NS) {
   const growDelay = weakenTim - growTim
 
   let threadCount = 1
-  const buffer = (scriptHost.hostname == "home") ? 64 : 0
-  const availMemory = scriptHost.maxRam - scriptHost.ramUsed  - linkScriptSize - buffer
+  const buffer = (scriptHost.hostname == "home") ? 384 : 0
+  const availMemory = scriptHost.maxRam - scriptHost.ramUsed - linkScriptSize - buffer
   let batch = calculateBatchSize(ns, target, scriptHost, person,
     threadCount, hackScriptSize, growScriptSize, weakenScriptSize)
   if (batch.batchMemory > availMemory) {
@@ -73,8 +73,9 @@ export async function main(ns: NS) {
   const linkArgs = [batchFinishedPort, batchScriptName, "home", 1, ...batchArgs]
   let apid = ns.exec(linkScript, scriptHost.hostname, { threads: 1, temporary: true }, ...linkArgs)
   if (apid == 0) ns.tprintf(`${batchScriptName} failed to run ${linkScript} on ${scriptHost.hostname}`)
-  //await ns.sleep(1)  // wait for port listener to be ready
 
+  let checkTime = performance.now()
+  let checkTimeLong = performance.now()
   for (let i = 0; i < parallelBatch; i++) {
     apid = ns.exec(hackScriptName, scriptHost.hostname, { threads: threadCount, temporary: true },
       target.hostname, hackDelay)
@@ -88,6 +89,13 @@ export async function main(ns: NS) {
       target.hostname, growDelay + 0)
     if (apid == 0) ns.tprintf(`${batchScriptName} failed to run ${growScriptName} on ${scriptHost.hostname}`)
 
+    if (performance.now() - checkTimeLong > 2000) {
+      apid = ns.exec(weakenScriptName, scriptHost.hostname, { threads: batch.growWeakenThread, temporary: true },
+        target.hostname, 0, batchFinishedPort)
+      if (apid == 0) ns.tprintf(`${batchScriptName} failed to run ${weakenScriptName} on ${scriptHost.hostname}`)
+      break
+    }
+
     if (i + 1 == parallelBatch) {
       apid = ns.exec(weakenScriptName, scriptHost.hostname, { threads: batch.growWeakenThread, temporary: true },
         target.hostname, 0, batchFinishedPort)
@@ -96,6 +104,11 @@ export async function main(ns: NS) {
         target.hostname, 0)
     }
     if (apid == 0) ns.tprintf(`${batchScriptName} failed to run ${weakenScriptName} on ${scriptHost.hostname}`)
+
+    if (performance.now() - checkTime > 200) {
+      await ns.sleep(0)
+      checkTime = performance.now()
+    }
   }
 
   return batch.batchMemory
@@ -119,8 +132,9 @@ function calculateBatchSize(ns: NS, target: Server, host: Server, person: Player
   const weakenEff = ns.formulas.hacking.weakenEffect(1, host.cpuCores)
   const hackWeakenThread = Math.ceil(hackEffect / weakenEff)
   const cloneTarget = structuredClone(target)
-  cloneTarget.moneyAvailable = (1 - hackEffect) * (target.moneyMax ?? 0)
+  cloneTarget.moneyAvailable = (1 - hackPct) * (target.moneyMax ?? 0)
   const growThr = ns.formulas.hacking.growThreads(cloneTarget, person, target.moneyMax ?? 0, host.cpuCores)
+  //const ga = Math.ceil(ns.growthAnalyze(target.hostname, (target.moneyMax ?? 0) / cloneTarget.moneyAvailable))
   const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, host.cpuCores)
   const growWeakenThread = Math.ceil(growEffect / weakenEff)
   const batchMemory = hackScriptSize * threadCount

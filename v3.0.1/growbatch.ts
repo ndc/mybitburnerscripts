@@ -37,11 +37,11 @@ export async function main(ns: NS) {
     if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
   }
   if (data.growThr > 0) {
-    apid = ns.exec(growScriptName, scriptHostName, data.growThr, targetName, data.growDelay + 1)
+    apid = ns.exec(growScriptName, scriptHostName, data.growThr, targetName, data.growDelay)
     if (apid == 0) ns.tprintf(`Failed to run ${growScriptName}`)
   }
   if (data.growWeakenThread > 0) {
-    apid = ns.exec(weakenScriptName, scriptHostName, data.growWeakenThread, targetName, 2)
+    apid = ns.exec(weakenScriptName, scriptHostName, data.growWeakenThread, targetName, 0)
     if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
   }
 }
@@ -60,28 +60,13 @@ function collectData(ns: NS, target: Server, hostServer: Server, person: Player,
   const prepWeakenThread = Math.ceil(
     ((target.hackDifficulty ?? 0) - (target.minDifficulty ?? 0)) / weakenEff)
 
-  if (dryrun) ns.printf("%j", {
-    weakenEff: weakenEff,
-    prepWeakenThread: prepWeakenThread
-  })
-
   const growThr = ns.formulas.hacking.growThreads(target, person, target.moneyMax ?? 0, hostServer.cpuCores)
   const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, hostServer.cpuCores)
   const growWeakenThread = Math.ceil(growEffect / weakenEff)
 
-  if (dryrun) ns.printf("%j", {
-    growEffect: growEffect,
-    growThr: growThr,
-    growWeakenThread: growWeakenThread,
-  })
-
   const batchMemory = prepWeakenThread * weakenScriptSize
     + growThr * growScriptSize
     + growWeakenThread * weakenScriptSize
-
-  if (dryrun) ns.printf("%j", {
-    batchMemory: batchMemory,
-  })
 
   const weakenTim = ns.formulas.hacking.weakenTime(target, person)
   const growTim = ns.formulas.hacking.growTime(target, person)
@@ -89,6 +74,12 @@ function collectData(ns: NS, target: Server, hostServer: Server, person: Player,
   const growDelay = weakenTim - growTim
 
   if (dryrun) ns.printf("%j", {
+    weakenEff: weakenEff,
+    prepWeakenThread: prepWeakenThread,
+    growEffect: growEffect,
+    growThr: growThr,
+    growWeakenThread: growWeakenThread,
+    batchMemory: batchMemory,
     weakenTim: weakenTim,
     growTim: growTim,
     weakenVsGrow: weakenVsGrow,

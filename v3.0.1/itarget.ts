@@ -30,5 +30,6 @@ export async function main(ns: NS) {
     .toSorted((a, b) => b.ratio - a.ratio
       || a.requiredHackingSkill - b.requiredHackingSkill)
 
-  ns.tprintf("%j", result)
+  ns.printf("%j", result)
+  ns.ui.openTail()
 }

@@ -9,7 +9,7 @@ export async function main(ns: NS) {
     .filter(s => s.hostname != "home")
   let apid = 0
   for (let i = 0; i < hosts.length; i++) {
-    await ns.sleep(10)
+    await ns.sleep(50)
     const host = hosts[i]
     ns.tprintf(`${host.hostname}`)
     apid = ns.exec(scriptName, "home", 1, targetName, false, host.hostname)

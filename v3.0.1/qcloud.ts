@@ -1,7 +1,9 @@
 export async function main(ns: NS) {
+  const memoryLimit = ns.args[0] as number ?? 32768
+
   const currentServers = ns.cloud.getServerNames()
   const buyCount = ns.cloud.getServerLimit() - currentServers.length
-  const memorySizes = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+  const memorySizes = [16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536]
   let playerMoney = ns.getPlayer().money
   let chosenMemory = 0
   let buyPrice = 0
@@ -10,6 +12,7 @@ export async function main(ns: NS) {
     const tryPrice = ns.cloud.getServerCost(memorySize) * buyCount
 
     if (tryPrice > playerMoney) break
+    if (memorySize > memoryLimit) break
 
     chosenMemory = memorySize
     buyPrice = tryPrice
@@ -27,6 +30,7 @@ export async function main(ns: NS) {
   while (!!toUpgrade) {
     const nextSize = memorySizes
       .filter(s => s > toUpgrade!.memory)
+      .filter(s => s <= memoryLimit)
       .toSorted((a, b) => a - b)
       .find(m => true)
     if (!nextSize) break  // at max ram

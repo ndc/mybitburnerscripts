@@ -18,7 +18,7 @@ export async function main(ns: NS) {
   const scriptHost = ns.getServer(hostname1 as string)
 
   const batchHackScriptName = "enhack.ts"
-  if ((target.moneyAvailable ?? 0) / (target.moneyMax ?? 1) > 0.99) {
+  if ((target.moneyAvailable ?? 0) / (target.moneyMax ?? 1) > 0.999999) {
     const msg = `Money in ${target.hostname} is ${target.moneyAvailable} max ${target.moneyMax}`
     ns.printf(msg)
     ns.toast(msg, undefined, 20000)
@@ -43,6 +43,7 @@ export async function main(ns: NS) {
     return
   }
 
+  let hitMaxOnce = false
   // @ignore-infinite
   while (true) {
     const tryThread = threadCount + 1
@@ -50,6 +51,10 @@ export async function main(ns: NS) {
       threadCount + 1, growScriptSize, weakenScriptSize, linkScriptSize)
 
     if (tryBatch.batchSize > availMemory()) break
+    if (tryBatch.growAmt >= target.moneyMax!) {
+      if (hitMaxOnce) break
+      hitMaxOnce = true
+    }
 
     batch = tryBatch
     threadCount = tryThread
