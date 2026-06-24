@@ -1,3 +1,5 @@
+import * as GLBP from "sharedvalues.ts"
+
 export async function main(ns: NS) {
   const scriptName = ns.args[0] as string
   const targetName = ns.args[1] as string
@@ -7,14 +9,13 @@ export async function main(ns: NS) {
     .filter(s => (s.maxRam - s.ramUsed) > 4)
     .filter(s => !ns.scriptRunning("qoweaken.ts", s.hostname))
     .filter(s => s.hostname != "home")
-  let apid = 0
-  for (let i = 0; i < hosts.length; i++) {
-    await ns.sleep(50)
-    const host = hosts[i]
-    ns.tprintf(`${host.hostname}`)
-    apid = ns.exec(scriptName, "home", 1, targetName, false, host.hostname)
-    if (apid == 0)
-      ns.tprintf(`${ns.getScriptName()}: failed to run ${scriptName} for ${host.hostname}`)
+
+  const portHandler = ns.getPortHandle(GLBP.BATCHENDPORT)
+
+  for (let host of hosts) {
+    const msg = [scriptName, targetName, host.hostname]
+    ns.tprintf(`sending %j`, msg)
+    portHandler.write(msg)
   }
 }
 
