@@ -1,9 +1,26 @@
 export async function main(ns: NS) {
-  const a = ns.dnet.probe()
-  ns.tprintf("%j", a)
-  for(let i = 0;i<a.length;i++){
-    const b = ns.dnet.getServerDetails(a[i])
-    ns.tprintf("%j", b)
+  const portHandler = ns.getPortHandle(2)
+  portHandler.clear()
+  portHandler.write("Hello from 3scan")
+  ns.tprintf("%j", portHandler.read())
+
+  const doSomething = async (m: string) => {
+    await ns.sleep(0)
+    ns.tprintf("work %j", m)
+  }
+
+  while (true) {
+    await portHandler.nextWrite()
+
+    let rawMsg = portHandler.read()
+    ns.tprintf("nextWrite %j", rawMsg)
+
+    while (rawMsg != "NULL PORT DATA") {
+      await ns.sleep(0)
+      ns.tprintf("read %j", rawMsg)
+      await doSomething(rawMsg)
+      rawMsg = portHandler.read()
+    }
   }
 }
 
