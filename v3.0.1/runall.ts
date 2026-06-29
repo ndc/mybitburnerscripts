@@ -10,12 +10,10 @@ export async function main(ns: NS) {
     .filter(s => !ns.scriptRunning("qoweaken.ts", s.hostname))
     .filter(s => s.hostname != "home")
 
-  const portHandler = ns.getPortHandle(GLBP.BATCHENDPORT)
-
   for (let host of hosts) {
     const msg = [scriptName, targetName, host.hostname]
     ns.tprintf(`sending %j`, msg)
-    portHandler.write(msg)
+    ns.writePort(GLBP.BATCHENDPORT, msg)
   }
 }
 

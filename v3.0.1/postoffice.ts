@@ -3,15 +3,14 @@ import * as GLBL from "sharedvalues.ts"
 export async function main(ns: NS) {
   ns.disableLog("ALL")
 
-  const portHandler = ns.getPortHandle(GLBL.BATCHENDPORT)
-  portHandler.clear()
-  portHandler.write("Hello from postmaster")
-  ns.tprintf("%j", portHandler.read())
+  ns.clearPort(GLBL.BATCHENDPORT)
+  ns.writePort(GLBL.BATCHENDPORT, "Hello from postmaster")
+  ns.tprintf("%j", ns.readPort(GLBL.BATCHENDPORT))
 
   while (true) {
-    await portHandler.nextWrite()
+    await ns.nextPortWrite(GLBL.BATCHENDPORT)
 
-    let rawMsg = portHandler.read()
+    let rawMsg = ns.readPort(GLBL.BATCHENDPORT)
     //ns.tprintf("nextWrite %j", rawMsg)
 
     while (rawMsg != "NULL PORT DATA") {
@@ -22,7 +21,7 @@ export async function main(ns: NS) {
       else
         ns.tprintf(`Invalid message format: %j`, rawMsg)
 
-      rawMsg = portHandler.read()
+      rawMsg = ns.readPort(GLBL.BATCHENDPORT)
     }
   }
 }
@@ -39,6 +38,9 @@ async function handleHWGW(ns: NS, msgs: string[]) {
     case GLBL.ACTHACK:
       hackHandler(ns, parm[0], parm[1])
       break
+    case GLBL.ACTPREP:
+      prepHandler(ns, parm[0], parm[1])
+      break
     default:
       ns.tprintf(`Invalid message format: %j`, msgs)
   }
@@ -54,14 +56,12 @@ async function weakenHandler(ns: NS, target1: string, hostname1: string) {
 
   const secLvlDelta = (target.hackDifficulty ?? 0) - (target.minDifficulty ?? 0)
 
-  const portHandler = ns.getPortHandle(GLBL.BATCHENDPORT)
-
   if (secLvlDelta < 0.1) {
     const msg = `Sec lvl ${target1} is already minimal ${target.hackDifficulty}`
     ns.tprintf(msg)
     ns.toast(msg, undefined, 20000)
     const portmsg = [GLBL.ACTGROW, target1, hostname1]
-    portHandler.write(portmsg)
+    ns.writePort(GLBL.BATCHENDPORT, portmsg)
     return
   }
 
@@ -100,14 +100,12 @@ async function growHandler(ns: NS, target1: string, hostname1: string) {
   const person = ns.getPlayer()
   const scriptHost = ns.getServer(hostname1 as string)
 
-  const portHandler = ns.getPortHandle(GLBL.BATCHENDPORT)
-
   if ((target.moneyAvailable ?? 0) / (target.moneyMax ?? 1) > 0.999999) {
     const msg = `Money in ${target1} is ${target.moneyAvailable} max ${target.moneyMax}`
     ns.tprintf(msg)
     ns.toast(msg, undefined, 20000)
     const portmsg = [GLBL.ACTHACK, target1, hostname1]
-    portHandler.write(portmsg)
+    ns.writePort(GLBL.BATCHENDPORT, portmsg)
     return
   }
 
@@ -237,8 +235,6 @@ async function hackHandler(ns: NS, target1: string, hostname1: string) {
   if (hostname1 != "home")
     ns.scp([hackScriptName, weakenScriptName, growScriptName], hostname1)
 
-  const portHandler = ns.getPortHandle(GLBL.BATCHENDPORT)
-
   let apid = 0
   const startTime = performance.now()
   for (let i = 0; i < parallelBatch; i++) {
@@ -260,8 +256,9 @@ async function hackHandler(ns: NS, target1: string, hostname1: string) {
         target1, 0, GLBL.BATCHENDPORT, GLBL.ACTHACK, hostname1)
       if (apid == 0)
         ns.tprintf(`${GLBL.ACTHACK} failed to run ${weakenScriptName} on ${hostname1}`)
-      else
-        portHandler.write([GLBL.ACTHACK, target1, hostname1])
+      else {
+        //ns.writePort(GLBL.BATCHENDPORT, [GLBL.ACTHACK, target1, hostname1])
+      }
       break
     }
 
@@ -312,6 +309,91 @@ function calculateHackSize(ns: NS, target: Server, host: Server, person: Player,
     growThr: growThr,
     growWeakenThread: growWeakenThread,
     growSLE: growSLE,
+    batchMemory: batchMemory,
+  }
+}
+
+export async function prepHandler(ns: NS, targetName: string, scriptHostName: string) {
+  const target = ns.getServer(targetName)
+  const scriptHost = ns.getServer(scriptHostName)
+  const person = ns.getPlayer()
+
+  const weakenScriptName = "qoweaken.ts"
+  const weakenScriptSize = 1.75
+  const growScriptName = "qogrow.ts"
+  const growScriptSize = 1.75
+
+  const data = calculatePrepSize(ns, target, scriptHost, person, weakenScriptSize, growScriptSize)
+  ns.printf("Prep data: %j", data)
+
+  const buffer = (scriptHostName == "home") ? GLBL.BUFFERHOME : 0
+  let remainingRam = scriptHost.maxRam - scriptHost.ramUsed - buffer
+  if (remainingRam < data.batchMemory) {
+    ns.tprintf(`${ns.getScriptName()}: not enough memory in ${scriptHostName}, ${data.batchMemory} needed ${remainingRam} available`)
+    return
+  }
+
+  if (data.prepWeakenThread < 1 && data.growThr < 1) {
+    const msg = `${targetName} sec lvl is ${target.hackDifficulty} money is ${target.moneyAvailable}`
+    ns.tprintf(msg)
+    ns.toast(msg, undefined, 20000)
+    const portmsg = [GLBL.ACTHACK, targetName, scriptHostName]
+    ns.writePort(GLBL.BATCHENDPORT, portmsg)
+    return
+  }
+
+  if (scriptHostName != "home")
+    ns.scp([weakenScriptName, growScriptName], scriptHostName)
+
+  let apid = 0
+  if (data.prepWeakenThread > 0) {
+    apid = ns.exec(weakenScriptName, scriptHostName, { threads: data.prepWeakenThread, temporary: true },
+      targetName, 0)
+    if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
+  }
+  if (data.growThr > 0) {
+    apid = ns.exec(growScriptName, scriptHostName, { threads: data.growThr, temporary: true },
+      targetName, data.growDelay)
+    if (apid == 0) ns.tprintf(`Failed to run ${growScriptName}`)
+  }
+  if (data.growWeakenThread > 0) {
+    apid = ns.exec(weakenScriptName, scriptHostName, { threads: data.growWeakenThread, temporary: true },
+      targetName, 0, GLBL.BATCHENDPORT, GLBL.ACTPREP, scriptHostName)
+    if (apid == 0) ns.tprintf(`Failed to run ${weakenScriptName}`)
+  }
+}
+
+type PrepSize = {
+  prepWeakenThread: number
+  growThr: number
+  growDelay: number
+  growWeakenThread: number
+  batchMemory: number
+}
+
+function calculatePrepSize(ns: NS, target: Server, hostServer: Server, person: Player,
+  weakenScriptSize: number, growScriptSize: number): PrepSize {
+  const weakenEff = ns.formulas.hacking.weakenEffect(1, hostServer.cpuCores)
+  const prepWeakenThread = Math.ceil(
+    ((target.hackDifficulty ?? 0) - (target.minDifficulty ?? 0)) / weakenEff)
+
+  const growThr = ns.formulas.hacking.growThreads(target, person, target.moneyMax ?? 0, hostServer.cpuCores)
+  const growEffect = ns.growthAnalyzeSecurity(growThr, undefined, hostServer.cpuCores)
+  const growWeakenThread = Math.ceil(growEffect / weakenEff)
+
+  const batchMemory = prepWeakenThread * weakenScriptSize
+    + growThr * growScriptSize
+    + growWeakenThread * weakenScriptSize
+
+  const weakenTim = ns.formulas.hacking.weakenTime(target, person)
+  const growTim = ns.formulas.hacking.growTime(target, person)
+  const growDelay = weakenTim - growTim
+
+  return {
+    prepWeakenThread: prepWeakenThread,
+    growThr: growThr,
+    growDelay: growDelay,
+    growWeakenThread: growWeakenThread,
     batchMemory: batchMemory,
   }
 }

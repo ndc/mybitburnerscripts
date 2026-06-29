@@ -1,4 +1,5 @@
 export async function main(ns: NS) {
+  ns.disableLog("ALL")
   const target = ns.args[0] as string
   const addWait = ns.args[1] as number
   const endPort = ns.args[2] as number
@@ -7,6 +8,6 @@ export async function main(ns: NS) {
   await ns.weaken(target, { additionalMsec: addWait })
   const msg = [nextScript, target, host]
   if (!!endPort) {
-    ns.tryWritePort(endPort, msg)
+    ns.writePort(endPort, msg)
   }
 }
