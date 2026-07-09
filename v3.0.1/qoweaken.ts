@@ -8,6 +8,6 @@ export async function main(ns: NS) {
   await ns.weaken(target, { additionalMsec: addWait })
   const msg = [nextScript, target, host]
   if (!!endPort) {
-    ns.writePort(endPort, msg)
+    ns.atExit(() => ns.writePort(endPort, msg))
   }
 }

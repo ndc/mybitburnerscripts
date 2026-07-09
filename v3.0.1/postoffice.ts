@@ -27,8 +27,8 @@ export async function main(ns: NS) {
 }
 
 async function handleHWGW(ns: NS, msgs: string[]) {
-  const [scriptName, ...parm] = msgs
-  switch (scriptName) {
+  const [commandName, ...parm] = msgs
+  switch (commandName) {
     case GLBL.ACTWEAKEN:
       weakenHandler(ns, parm[0], parm[1])
       break
@@ -40,6 +40,9 @@ async function handleHWGW(ns: NS, msgs: string[]) {
       break
     case GLBL.ACTPREP:
       prepHandler(ns, parm[0], parm[1])
+      break
+    case GLBL.ACTSHARE:
+      shareHandler(ns, parm[0])
       break
     default:
       ns.tprintf(`Invalid message format: %j`, msgs)
@@ -79,7 +82,9 @@ async function weakenHandler(ns: NS, target1: string, hostname1: string) {
     return
   }
 
-  ns.printf(`Using ${weakenThread} weaken threads`)
+  const weakenTim = ns.formulas.hacking.weakenTime(target, ns.getPlayer())
+
+  ns.printf(`${new Date().toLocaleTimeString()} Weaken ${target1} for ${weakenTim} using ${weakenThread} threads`)
 
   if (hostname1 != "home")
     ns.scp([weakenScriptName], hostname1)
@@ -141,8 +146,7 @@ async function growHandler(ns: NS, target1: string, hostname1: string) {
     threadCount = tryThread
   }
 
-  ns.printf(`Using ${threadCount} grow threads`)
-  ns.printf("%j", batch)
+  ns.printf(`${new Date().toLocaleTimeString()} Grow ${target1} for ${weakenTim} using ${threadCount} threads`)
 
   if (hostname1 != "home")
     ns.scp([weakenScriptName, growScriptName], hostname1)
@@ -229,8 +233,7 @@ async function hackHandler(ns: NS, target1: string, hostname1: string) {
     parallelBatch = tryParallelBatch
   }
 
-  ns.printf(`Using ${threadCount} hack threads, ${parallelBatch} in parallel`)
-  ns.printf("%j", batch)
+  ns.printf(`${new Date().toLocaleTimeString()} Hack ${target1} for ${weakenTim} using ${threadCount} threads, ${parallelBatch} in parallel`)
 
   if (hostname1 != "home")
     ns.scp([hackScriptName, weakenScriptName, growScriptName], hostname1)
@@ -324,7 +327,6 @@ export async function prepHandler(ns: NS, targetName: string, scriptHostName: st
   const growScriptSize = 1.75
 
   const data = calculatePrepSize(ns, target, scriptHost, person, weakenScriptSize, growScriptSize)
-  ns.printf("Prep data: %j", data)
 
   const buffer = (scriptHostName == "home") ? GLBL.BUFFERHOME : 0
   let remainingRam = scriptHost.maxRam - scriptHost.ramUsed - buffer
@@ -341,6 +343,10 @@ export async function prepHandler(ns: NS, targetName: string, scriptHostName: st
     ns.writePort(GLBL.BATCHENDPORT, portmsg)
     return
   }
+
+  const weakenTim = ns.formulas.hacking.weakenTime(target, person)
+
+  ns.printf(`${new Date().toLocaleTimeString()} Prep ${targetName} for ${weakenTim}`)
 
   if (scriptHostName != "home")
     ns.scp([weakenScriptName, growScriptName], scriptHostName)
@@ -396,4 +402,29 @@ function calculatePrepSize(ns: NS, target: Server, hostServer: Server, person: P
     growWeakenThread: growWeakenThread,
     batchMemory: batchMemory,
   }
+}
+
+async function shareHandler(ns: NS, hostname: string) {
+  const shareScriptName = "qoshare.ts"
+  const shareScriptSize = 4
+
+  const scriptHost = ns.getServer(hostname)
+
+  const buffer = (hostname == "home") ? (GLBL.BUFFERHOME + 64) : 0
+  const availableMemory = scriptHost.maxRam - scriptHost.ramUsed - buffer
+  let shareThread = Math.floor(availableMemory / shareScriptSize)
+
+  if (shareThread < 1) {
+    ns.tprintf(`${GLBL.ACTSHARE}: not enough memory in ${hostname} ${availableMemory}`)
+    return
+  }
+
+  ns.printf(`${new Date().toLocaleTimeString()} Share using ${shareThread} threads`)
+
+  if (hostname != "home")
+    ns.scp([shareScriptName], hostname)
+
+  const apid = ns.exec(shareScriptName, hostname, { threads: shareThread, temporary: true },
+    GLBL.BATCHENDPORT, GLBL.ACTSHARE, hostname)
+  if (apid == 0) ns.tprintf(`Failed to run ${shareScriptName}`)
 }

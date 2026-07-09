@@ -7,6 +7,27 @@ export async function main(ns: NS) {
   const filename = "zserverinfo.json"
   ns.write(filename, filecontent, "w")
   ns.tprintf(`Updated ${filename}`)
+
+  const backdoors = ["CSEC", "avmnite-02h", "I.I.I.I", "run4theh111z"]
+    .map(b => allservers.find(s => s.Svr.hostname == b)!)
+    .map(s => ({
+      hostname: s.Svr.hostname,
+      traces: traceServer(s.Svr.hostname, allservers),
+    }))
+  const backdoorfilename = "zbackdoor.json"
+  ns.write(backdoorfilename, JSON.stringify(backdoors), "w")
+  ns.tprintf(`Updated ${backdoorfilename}`)
+}
+
+function traceServer(endserver: string, allservers: Info[]) {
+  let trace: string[] = []
+  let i = allservers.findIndex(s => s.Svr.hostname == endserver)
+  while (i > 0) {
+    const server = allservers[i]
+    trace.unshift(server.Svr.hostname)
+    i = allservers.findIndex(s => s.Svr.hostname == server.Parent)
+  }
+  return trace
 }
 
 type Info = {

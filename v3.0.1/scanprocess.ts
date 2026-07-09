@@ -34,12 +34,14 @@ export async function main(ns: NS) {
         || ns.scriptRunning(weakenLoopScript, svrName)) {
         return 0
       }
-      return runOp(svrName, scriptName)
+      //return runOp(svrName, scriptName)
+      return 0
     } else {
       if (!crackServer(svrName)) {
         return 0
       }
-      return runOp(svrName, scriptName)
+      //return runOp(svrName, scriptName)
+      return 0
     }
   }
 

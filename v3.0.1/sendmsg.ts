@@ -1,8 +1,7 @@
 import * as GLBL from "sharedvalues.ts"
 
 export async function main(ns: NS) {
-  const [scriptName, targetName, hostName] = ns.args
-  const msg = [scriptName as string, targetName as string, hostName as string]
-  ns.tprintf("sending %j", msg)
-  ns.writePort(GLBL.BATCHENDPORT, msg)
+  const msgs = ns.args.map(a => a as string)
+  ns.tprintf("sending %j", msgs)
+  ns.writePort(GLBL.BATCHENDPORT, msgs)
 }

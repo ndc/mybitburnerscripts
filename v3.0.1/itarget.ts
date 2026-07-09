@@ -27,9 +27,10 @@ export async function main(ns: NS) {
         serverGrowth: s.serverGrowth,
       }
     })
+    .filter(s => s.weakenMinute < 2)
     .toSorted((a, b) => b.ratio - a.ratio
       || a.requiredHackingSkill - b.requiredHackingSkill)
+    .slice(0, 3)
 
-  ns.printf("%j", result)
-  ns.ui.openTail()
+  for (let target of result) ns.tprintf("%j", target)
 }
