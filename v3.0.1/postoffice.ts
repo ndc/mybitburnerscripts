@@ -16,11 +16,12 @@ export async function main(ns: NS) {
     while (rawMsg != "NULL PORT DATA") {
       //ns.tprintf("read %j", rawMsg)
       if (Array.isArray(rawMsg)) {
-        handleHWGW(ns, rawMsg)
+        await handleHWGW(ns, rawMsg)
       }
       else
         ns.tprintf(`Invalid message format: %j`, rawMsg)
 
+      await ns.sleep(0)
       rawMsg = ns.readPort(GLBL.BATCHENDPORT)
     }
   }
@@ -29,24 +30,31 @@ export async function main(ns: NS) {
 async function handleHWGW(ns: NS, msgs: string[]) {
   const [commandName, ...parm] = msgs
   switch (commandName) {
+    case GLBL.ACTNOOP:
+      await noopHandler(ns)
+      break
     case GLBL.ACTWEAKEN:
-      weakenHandler(ns, parm[0], parm[1])
+      await weakenHandler(ns, parm[0], parm[1])
       break
     case GLBL.ACTGROW:
-      growHandler(ns, parm[0], parm[1])
+      await growHandler(ns, parm[0], parm[1])
       break
     case GLBL.ACTHACK:
-      hackHandler(ns, parm[0], parm[1])
+      await hackHandler(ns, parm[0], parm[1])
       break
     case GLBL.ACTPREP:
-      prepHandler(ns, parm[0], parm[1])
+      await prepHandler(ns, parm[0], parm[1])
       break
     case GLBL.ACTSHARE:
-      shareHandler(ns, parm[0])
+      await shareHandler(ns, parm[0])
       break
     default:
       ns.tprintf(`Invalid message format: %j`, msgs)
   }
+}
+
+async function noopHandler(ns: NS) {
+  ns.printf(`${new Date().toLocaleTimeString()} No Op`)
 }
 
 async function weakenHandler(ns: NS, target1: string, hostname1: string) {
@@ -316,7 +324,7 @@ function calculateHackSize(ns: NS, target: Server, host: Server, person: Player,
   }
 }
 
-export async function prepHandler(ns: NS, targetName: string, scriptHostName: string) {
+async function prepHandler(ns: NS, targetName: string, scriptHostName: string) {
   const target = ns.getServer(targetName)
   const scriptHost = ns.getServer(scriptHostName)
   const person = ns.getPlayer()

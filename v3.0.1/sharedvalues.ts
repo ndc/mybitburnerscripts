@@ -4,4 +4,6 @@ export const ACTGROW = "grow"
 export const ACTHACK = "hack"
 export const ACTPREP = "prep"
 export const ACTSHARE = "share"
-export const BUFFERHOME = 18
+export const ACTNOOP = "noop"
+//export const BUFFERHOME = 18
+export const BUFFERHOME = 8

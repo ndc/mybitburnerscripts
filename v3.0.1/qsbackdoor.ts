@@ -5,5 +5,4 @@ export async function main(ns: NS) {
   }
   await ns.singularity.installBackdoor()
   ns.singularity.connect("home")
-  ns.run("allservers.ts", { threads: 1 })
 }
