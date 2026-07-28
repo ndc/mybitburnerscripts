@@ -1,17 +1,21 @@
 export async function main(ns: NS) {
-  while (true) {
-    await ns.sleep(10000)
-
-    const dopIdx = 0
+  const crimeTypeRaw = ns.args[0] as string
+  const dopCount = ns.sleeve.getNumSleeves()
+  for (let dopIdx = 0; dopIdx < dopCount; dopIdx++) {
     const dop = ns.sleeve.getSleeve(dopIdx)
-    if (dop.sync < 99) {
-      const syncSucc = ns.sleeve.setToSynchronize(dopIdx)
-      ns.tprintf(`${new Date().toLocaleTimeString()} sleeve ${dopIdx} sync ${syncSucc}`)
-      continue
-    }
+    if (dop.shock > 95) continue
 
-    const crimeSucc = ns.sleeve.setToCommitCrime(dopIdx, "Mug")
-    ns.tprintf(`${new Date().toLocaleTimeString()} sleeve ${dopIdx} crime ${crimeSucc}`)
-    break
+    let crimeType: CrimeType = "Mug"
+    switch (crimeTypeRaw?.toLowerCase()) {
+      case "shoplift":
+        crimeType = "Shoplift"
+        break
+      case "homicide":
+        crimeType = "Homicide"
+        break
+      default:
+        crimeType = "Mug"
+    }
+    const crimeSucc = ns.sleeve.setToCommitCrime(dopIdx, crimeType)
   }
 }

@@ -1,9 +1,5 @@
 export async function main(ns: NS) {
   ns.disableLog("ALL")
-  await whatChanged(ns)
-}
-
-async function whatChanged(ns: NS) {
   while (true) {
     await ns.gang.nextUpdate()
 
@@ -32,10 +28,17 @@ function ascendTrainees(ns: NS) {
     const dAscPoint = ns.formulas.gang.ascensionPointsGain(member.def_exp)
     const newMultiplier = ns.formulas.gang.ascensionMultiplier(member.def_asc_points + dAscPoint)
     const increasePct = newMultiplier / member.def_asc_mult
-    if (increasePct < 1.2) continue
+    const nextAscend = calculateNextAscend(member.def_asc_mult)
+    //if (increasePct < 1.2) continue
+    if (increasePct < nextAscend) continue
     const ascendlog = `\r\n${new Date().toLocaleTimeString()} ascending ${member.name} def ${member.def} mult ${newMultiplier}`
     ns.printf(ascendlog)
     ns.write("zascendlog.txt", ascendlog, "a")
     const successful = ns.gang.ascendMember(member.name)
   }
+}
+
+function calculateNextAscend(currentMultiplier: number) {
+  const jeek = 1.66 - 0.62 / Math.exp((2 / currentMultiplier) ** 2.24)
+  return jeek
 }
