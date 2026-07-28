@@ -1,83 +1,322 @@
 export async function main(ns: NS) {
-  const info = ns.gang.getMemberInformation("a")
-  ns.tprintf("%j", info)
-  const dpoint = ns.formulas.gang.ascensionPointsGain(info.agi_exp)
-  ns.tprintf("%j", dpoint)
-  const newmult = ns.formulas.gang.ascensionMultiplier(info.agi_asc_points + dpoint)
-  ns.tprintf("%j", newmult)
+  const a = ns.gang.getMemberNames().map(n => ns.gang.getMemberInformation(n))
+  const b = ns.gang.getTaskNames().map(t => ns.gang.getTaskStats(t))
+  ns.tprintf("%j", b)
 }
 
-async function whatChanged(ns: NS) {
-  while (true) {
-    await ns.gang.nextUpdate()
+function sortSelf() {
+  const result = selfCrimeInfo.map(c => ({
+    name: c.type,
+    time: c.time,
+    ipt: c.agility_exp / c.time,
+  }))
+    .toSorted((a, b) => b.ipt - a.ipt)
 
-    const recruitCount = ns.gang.getRecruitsAvailable()
-    if (recruitCount > 0) {
-      recruit(ns)
-    }
-  }
+  return result
 }
 
-function recruit(ns: NS) {
-  const recruitCount = ns.gang.getRecruitsAvailable()
-  let existingMembers = ns.gang.getMemberNames()
-  const lastName = existingMembers.map(n => Number(n) || 0).toSorted((a, b) => b - a).find(a => true)
-  for (let i = 0; i < recruitCount; i++) {
-    const newName = (lastName! + i + 1).toString()
-    let successful = ns.gang.recruitMember(newName)
-    successful = ns.gang.setMemberTask(newName, "Train Combat")
-  }
+function sortGang() {
+  const result = gangCrimeInfo.map(c => ({
+    name: c.name,
+    ipt: c.baseRespect / c.difficulty,
+  }))
+    .toSorted((a, b) => b.ipt - a.ipt)
+
+  return result
 }
 
-/*
-ns.gang.nextUpdate()
-ns.gang.inGang()
-ns.gang.createGang("Slum Snakes")
-ns.gang.canRecruitMember()
-ns.gang.getRecruitsAvailable()
-ns.gang.recruitMember("")
+const selfCrimeInfo = [
+  {
+    "time": 2000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 0,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 1,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 0,
+    "hacking_exp": 0,
+    "strength_exp": 0,
+    "defense_exp": 0,
+    "dexterity_exp": 1.37902121725368,
+    "agility_exp": 1.37902121725368,
+    "charisma_exp": 0,
+    "intelligence_exp": 0,
+    "workName": "to shoplift",
+    "tooltipText": "Attempt to shoplift from a low-end retailer",
+    "type": "Shoplift",
+    "money": 5114.915060359103,
+    "difficulty": 0.05,
+    "karma": 0.1,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 60000,
+    "hacking_success_weight": 0.5,
+    "strength_success_weight": 0,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 2,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 0,
+    "hacking_exp": 22.34014371950962,
+    "strength_exp": 0,
+    "defense_exp": 0,
+    "dexterity_exp": 31.0279773882078,
+    "agility_exp": 31.0279773882078,
+    "charisma_exp": 0,
+    "intelligence_exp": 0.1875,
+    "workName": "to rob a store",
+    "tooltipText": "Attempt to commit armed robbery on a high-end store",
+    "type": "Rob Store",
+    "money": 136397.73494290945,
+    "difficulty": 0.2,
+    "karma": 0.5,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 4000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 1.5,
+    "defense_success_weight": 0.5,
+    "dexterity_success_weight": 1.5,
+    "agility_success_weight": 0.5,
+    "charisma_success_weight": 0,
+    "hacking_exp": 0,
+    "strength_exp": 2.06853182588052,
+    "defense_exp": 2.06853182588052,
+    "dexterity_exp": 2.06853182588052,
+    "agility_exp": 2.06853182588052,
+    "charisma_exp": 0,
+    "intelligence_exp": 0,
+    "workName": "to mug",
+    "tooltipText": "Attempt to mug a random person on the street",
+    "type": "Mug",
+    "money": 12275.796144861848,
+    "difficulty": 0.2,
+    "karma": 0.25,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 90000,
+    "hacking_success_weight": 0.5,
+    "strength_success_weight": 0,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 1,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 0,
+    "hacking_exp": 33.510215579264425,
+    "strength_exp": 0,
+    "defense_exp": 0,
+    "dexterity_exp": 41.3706365176104,
+    "agility_exp": 41.3706365176104,
+    "charisma_exp": 0,
+    "intelligence_exp": 0.375,
+    "workName": "larceny",
+    "tooltipText": "Attempt to rob property from someone's house",
+    "type": "Larceny",
+    "money": 272795.4698858189,
+    "difficulty": 0.3333333333333333,
+    "karma": 1.5,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 10000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 0,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 2,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 3,
+    "hacking_exp": 0,
+    "strength_exp": 0,
+    "defense_exp": 0,
+    "dexterity_exp": 3.4475530431342,
+    "agility_exp": 3.4475530431342,
+    "charisma_exp": 6.8951060862684,
+    "intelligence_exp": 0,
+    "workName": "to deal drugs",
+    "tooltipText": "Attempt to deal drugs",
+    "type": "Deal Drugs",
+    "money": 40919.32048287283,
+    "difficulty": 1,
+    "karma": 0.5,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 300000,
+    "hacking_success_weight": 0.05,
+    "strength_success_weight": 0,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 1.25,
+    "agility_success_weight": 0,
+    "charisma_success_weight": 0,
+    "hacking_exp": 74.46714573169872,
+    "strength_exp": 0,
+    "defense_exp": 0,
+    "dexterity_exp": 103.426591294026,
+    "agility_exp": 0,
+    "charisma_exp": 10.3426591294026,
+    "intelligence_exp": 1.5,
+    "workName": "to forge bonds",
+    "tooltipText": "Attempt to forge corporate bonds",
+    "type": "Bond Forgery",
+    "money": 1534474.5181077311,
+    "difficulty": 0.5,
+    "karma": 0.1,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 40000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 1,
+    "defense_success_weight": 1,
+    "dexterity_success_weight": 1,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 1,
+    "hacking_exp": 0,
+    "strength_exp": 13.7902121725368,
+    "defense_exp": 13.7902121725368,
+    "dexterity_exp": 13.7902121725368,
+    "agility_exp": 13.7902121725368,
+    "charisma_exp": 27.5804243450736,
+    "intelligence_exp": 0,
+    "workName": "to traffic arms",
+    "tooltipText": "Attempt to smuggle illegal arms into the city",
+    "type": "Traffick Arms",
+    "money": 204596.60241436414,
+    "difficulty": 2,
+    "karma": 1,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 3000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 2,
+    "defense_success_weight": 2,
+    "dexterity_success_weight": 0.5,
+    "agility_success_weight": 0.5,
+    "charisma_success_weight": 0,
+    "hacking_exp": 0,
+    "strength_exp": 1.37902121725368,
+    "defense_exp": 1.37902121725368,
+    "dexterity_exp": 1.37902121725368,
+    "agility_exp": 1.37902121725368,
+    "charisma_exp": 0,
+    "intelligence_exp": 0,
+    "workName": "homicide",
+    "tooltipText": "Attempt to murder a random person on the street",
+    "type": "Homicide",
+    "money": 15344.745181077311,
+    "difficulty": 1,
+    "karma": 3,
+    "kills": 1,
+    "reputation": 0
+  },
+  {
+    "time": 80000,
+    "hacking_success_weight": 1,
+    "strength_success_weight": 1,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 4,
+    "agility_success_weight": 2,
+    "charisma_success_weight": 2,
+    "hacking_exp": 0,
+    "strength_exp": 13.7902121725368,
+    "defense_exp": 13.7902121725368,
+    "dexterity_exp": 13.7902121725368,
+    "agility_exp": 55.1608486901472,
+    "charisma_exp": 27.5804243450736,
+    "intelligence_exp": 0.4,
+    "workName": "grand theft auto",
+    "tooltipText": "Attempt to commit grand theft auto",
+    "type": "Grand Theft Auto",
+    "money": 545590.9397716378,
+    "difficulty": 8,
+    "karma": 5,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 120000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 1,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 1,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 1,
+    "hacking_exp": 0,
+    "strength_exp": 55.1608486901472,
+    "defense_exp": 55.1608486901472,
+    "dexterity_exp": 55.1608486901472,
+    "agility_exp": 55.1608486901472,
+    "charisma_exp": 55.1608486901472,
+    "intelligence_exp": 0.65,
+    "workName": "to kidnap",
+    "tooltipText": "Attempt to kidnap and ransom a high-profile-target",
+    "type": "Kidnap",
+    "money": 1227579.614486185,
+    "difficulty": 5,
+    "karma": 6,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 600000,
+    "hacking_success_weight": 1,
+    "strength_success_weight": 1,
+    "defense_success_weight": 1,
+    "dexterity_success_weight": 1,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 1,
+    "hacking_exp": 335.1021557926443,
+    "strength_exp": 310.279773882078,
+    "defense_exp": 310.279773882078,
+    "dexterity_exp": 310.279773882078,
+    "agility_exp": 310.279773882078,
+    "charisma_exp": 310.279773882078,
+    "intelligence_exp": 3.25,
+    "workName": "a heist",
+    "tooltipText": "Attempt to pull off the ultimate heist",
+    "type": "Heist",
+    "money": 40919320.48287283,
+    "difficulty": 18,
+    "karma": 15,
+    "kills": 0,
+    "reputation": 0
+  },
+  {
+    "time": 300000,
+    "hacking_success_weight": 0,
+    "strength_success_weight": 1,
+    "defense_success_weight": 0,
+    "dexterity_success_weight": 2,
+    "agility_success_weight": 1,
+    "charisma_success_weight": 0,
+    "hacking_exp": 0,
+    "strength_exp": 206.853182588052,
+    "defense_exp": 206.853182588052,
+    "dexterity_exp": 206.853182588052,
+    "agility_exp": 206.853182588052,
+    "charisma_exp": 0,
+    "intelligence_exp": 1.625,
+    "workName": "to assassinate",
+    "tooltipText": "Attempt to assassinate a high-profile target",
+    "type": "Assassination",
+    "money": 4091932.048287283,
+    "difficulty": 8,
+    "karma": 10,
+    "kills": 1,
+    "reputation": 0
+  },
+]
 
-ns.gang.getMemberNames()
-ns.gang.getMemberInformation("")
-ns.gang.getTaskNames()
-ns.gang.getTaskStats("")
-ns.gang.setMemberTask("", "")
-
-ns.gang.getEquipmentNames()
-ns.gang.getEquipmentCost("")
-ns.gang.getEquipmentStats("")
-ns.gang.getEquipmentType("")
-ns.gang.purchaseEquipment("","")
-
-ns.formulas.gang.ascensionMultiplier(0)
-ns.formulas.gang.ascensionPointsGain(0)
-ns.formulas.gang.moneyGain(
-  ns.gang.getGangInformation(),
-  ns.gang.getMemberInformation(""),
-  ns.gang.getTaskStats(""))
-ns.formulas.gang.respectGain(
-  ns.gang.getGangInformation(),
-  ns.gang.getMemberInformation(""),
-  ns.gang.getTaskStats(""))
-ns.formulas.gang.wantedLevelGain(
-  ns.gang.getGangInformation(),
-  ns.gang.getMemberInformation(""),
-  ns.gang.getTaskStats(""))
-ns.formulas.gang.wantedPenalty(ns.gang.getGangInformation())
-
-ns.gang.getGangInformation()
-ns.gang.getAllGangInformation()
-
-ns.gang.getBonusTime()
-ns.gang.renameMember("", "")
-ns.gang.respectForNextRecruit()
-ns.gang.setTerritoryWarfare(false)
-*/
-
-
-/*
-ns.gang.getTaskStats("")
-[
+const gangCrimeInfo = [
   {
     "name": "Unassigned",
     "desc": "This gang member is currently idle",
@@ -119,30 +358,6 @@ ns.gang.getTaskStats("")
       "respect": 1,
       "wanted": 1
     }
-  },
-  {
-    "time": 90000,
-    "hacking_success_weight": 0.5,
-    "strength_success_weight": 0,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 1,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 0,
-    "hacking_exp": 33.510215579264425,
-    "strength_exp": 0,
-    "defense_exp": 0,
-    "dexterity_exp": 41.3706365176104,
-    "agility_exp": 41.3706365176104,
-    "charisma_exp": 0,
-    "intelligence_exp": 0.375,
-    "workName": "larceny",
-    "tooltipText": "Attempt to rob property from someone's house",
-    "type": "Larceny",
-    "money": 272795.4698858189,
-    "difficulty": 0.3333333333333333,
-    "karma": 1.5,
-    "kills": 0,
-    "reputation": 0
   },
   {
     "name": "Deal Drugs",
@@ -419,7 +634,54 @@ ns.gang.getTaskStats("")
   }
 ]
 
+/*
+ns.gang.nextUpdate()
+ns.gang.inGang()
+ns.gang.createGang("Slum Snakes")
+ns.gang.canRecruitMember()
+ns.gang.getRecruitsAvailable()
+ns.gang.recruitMember("")
 
+ns.gang.getMemberNames()
+ns.gang.getMemberInformation("")
+ns.gang.getTaskNames()
+ns.gang.getTaskStats("")
+ns.gang.setMemberTask("", "")
+
+ns.gang.getEquipmentNames()
+ns.gang.getEquipmentCost("")
+ns.gang.getEquipmentStats("")
+ns.gang.getEquipmentType("")
+ns.gang.purchaseEquipment("","")
+
+ns.formulas.gang.ascensionMultiplier(0)
+ns.formulas.gang.ascensionPointsGain(0)
+ns.formulas.gang.moneyGain(
+  ns.gang.getGangInformation(),
+  ns.gang.getMemberInformation(""),
+  ns.gang.getTaskStats(""))
+ns.formulas.gang.respectGain(
+  ns.gang.getGangInformation(),
+  ns.gang.getMemberInformation(""),
+  ns.gang.getTaskStats(""))
+ns.formulas.gang.wantedLevelGain(
+  ns.gang.getGangInformation(),
+  ns.gang.getMemberInformation(""),
+  ns.gang.getTaskStats(""))
+ns.formulas.gang.wantedPenalty(ns.gang.getGangInformation())
+
+ns.gang.getGangInformation()
+ns.gang.getAllGangInformation()
+
+ns.gang.getBonusTime()
+ns.gang.renameMember("", "")
+ns.gang.respectForNextRecruit()
+ns.gang.setTerritoryWarfare(false)
+*/
+
+
+
+/*
 ns.gang.getMemberInformation("b")
 {
   "name": "a",
@@ -554,276 +816,4 @@ ns.gang.getAllGangInformation()
   }
 }
 
-
-
-
-
-
-
-[
-  {
-    "time": 2000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 0,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 1,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 0,
-    "hacking_exp": 0,
-    "strength_exp": 0,
-    "defense_exp": 0,
-    "dexterity_exp": 1.37902121725368,
-    "agility_exp": 1.37902121725368,
-    "charisma_exp": 0,
-    "intelligence_exp": 0,
-    "workName": "to shoplift",
-    "tooltipText": "Attempt to shoplift from a low-end retailer",
-    "type": "Shoplift",
-    "money": 5114.915060359103,
-    "difficulty": 0.05,
-    "karma": 0.1,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 60000,
-    "hacking_success_weight": 0.5,
-    "strength_success_weight": 0,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 2,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 0,
-    "hacking_exp": 22.34014371950962,
-    "strength_exp": 0,
-    "defense_exp": 0,
-    "dexterity_exp": 31.0279773882078,
-    "agility_exp": 31.0279773882078,
-    "charisma_exp": 0,
-    "intelligence_exp": 0.1875,
-    "workName": "to rob a store",
-    "tooltipText": "Attempt to commit armed robbery on a high-end store",
-    "type": "Rob Store",
-    "money": 136397.73494290945,
-    "difficulty": 0.2,
-    "karma": 0.5,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 4000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 1.5,
-    "defense_success_weight": 0.5,
-    "dexterity_success_weight": 1.5,
-    "agility_success_weight": 0.5,
-    "charisma_success_weight": 0,
-    "hacking_exp": 0,
-    "strength_exp": 2.06853182588052,
-    "defense_exp": 2.06853182588052,
-    "dexterity_exp": 2.06853182588052,
-    "agility_exp": 2.06853182588052,
-    "charisma_exp": 0,
-    "intelligence_exp": 0,
-    "workName": "to mug",
-    "tooltipText": "Attempt to mug a random person on the street",
-    "type": "Mug",
-    "money": 12275.796144861848,
-    "difficulty": 0.2,
-    "karma": 0.25,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 10000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 0,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 2,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 3,
-    "hacking_exp": 0,
-    "strength_exp": 0,
-    "defense_exp": 0,
-    "dexterity_exp": 3.4475530431342,
-    "agility_exp": 3.4475530431342,
-    "charisma_exp": 6.8951060862684,
-    "intelligence_exp": 0,
-    "workName": "to deal drugs",
-    "tooltipText": "Attempt to deal drugs",
-    "type": "Deal Drugs",
-    "money": 40919.32048287283,
-    "difficulty": 1,
-    "karma": 0.5,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 300000,
-    "hacking_success_weight": 0.05,
-    "strength_success_weight": 0,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 1.25,
-    "agility_success_weight": 0,
-    "charisma_success_weight": 0,
-    "hacking_exp": 74.46714573169872,
-    "strength_exp": 0,
-    "defense_exp": 0,
-    "dexterity_exp": 103.426591294026,
-    "agility_exp": 0,
-    "charisma_exp": 10.3426591294026,
-    "intelligence_exp": 1.5,
-    "workName": "to forge bonds",
-    "tooltipText": "Attempt to forge corporate bonds",
-    "type": "Bond Forgery",
-    "money": 1534474.5181077311,
-    "difficulty": 0.5,
-    "karma": 0.1,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 40000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 1,
-    "defense_success_weight": 1,
-    "dexterity_success_weight": 1,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 1,
-    "hacking_exp": 0,
-    "strength_exp": 13.7902121725368,
-    "defense_exp": 13.7902121725368,
-    "dexterity_exp": 13.7902121725368,
-    "agility_exp": 13.7902121725368,
-    "charisma_exp": 27.5804243450736,
-    "intelligence_exp": 0,
-    "workName": "to traffic arms",
-    "tooltipText": "Attempt to smuggle illegal arms into the city",
-    "type": "Traffick Arms",
-    "money": 204596.60241436414,
-    "difficulty": 2,
-    "karma": 1,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 3000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 2,
-    "defense_success_weight": 2,
-    "dexterity_success_weight": 0.5,
-    "agility_success_weight": 0.5,
-    "charisma_success_weight": 0,
-    "hacking_exp": 0,
-    "strength_exp": 1.37902121725368,
-    "defense_exp": 1.37902121725368,
-    "dexterity_exp": 1.37902121725368,
-    "agility_exp": 1.37902121725368,
-    "charisma_exp": 0,
-    "intelligence_exp": 0,
-    "workName": "homicide",
-    "tooltipText": "Attempt to murder a random person on the street",
-    "type": "Homicide",
-    "money": 15344.745181077311,
-    "difficulty": 1,
-    "karma": 3,
-    "kills": 1,
-    "reputation": 0
-  },
-  {
-    "time": 80000,
-    "hacking_success_weight": 1,
-    "strength_success_weight": 1,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 4,
-    "agility_success_weight": 2,
-    "charisma_success_weight": 2,
-    "hacking_exp": 0,
-    "strength_exp": 13.7902121725368,
-    "defense_exp": 13.7902121725368,
-    "dexterity_exp": 13.7902121725368,
-    "agility_exp": 55.1608486901472,
-    "charisma_exp": 27.5804243450736,
-    "intelligence_exp": 0.4,
-    "workName": "grand theft auto",
-    "tooltipText": "Attempt to commit grand theft auto",
-    "type": "Grand Theft Auto",
-    "money": 545590.9397716378,
-    "difficulty": 8,
-    "karma": 5,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 120000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 1,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 1,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 1,
-    "hacking_exp": 0,
-    "strength_exp": 55.1608486901472,
-    "defense_exp": 55.1608486901472,
-    "dexterity_exp": 55.1608486901472,
-    "agility_exp": 55.1608486901472,
-    "charisma_exp": 55.1608486901472,
-    "intelligence_exp": 0.65,
-    "workName": "to kidnap",
-    "tooltipText": "Attempt to kidnap and ransom a high-profile-target",
-    "type": "Kidnap",
-    "money": 1227579.614486185,
-    "difficulty": 5,
-    "karma": 6,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 600000,
-    "hacking_success_weight": 1,
-    "strength_success_weight": 1,
-    "defense_success_weight": 1,
-    "dexterity_success_weight": 1,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 1,
-    "hacking_exp": 335.1021557926443,
-    "strength_exp": 310.279773882078,
-    "defense_exp": 310.279773882078,
-    "dexterity_exp": 310.279773882078,
-    "agility_exp": 310.279773882078,
-    "charisma_exp": 310.279773882078,
-    "intelligence_exp": 3.25,
-    "workName": "a heist",
-    "tooltipText": "Attempt to pull off the ultimate heist",
-    "type": "Heist",
-    "money": 40919320.48287283,
-    "difficulty": 18,
-    "karma": 15,
-    "kills": 0,
-    "reputation": 0
-  },
-  {
-    "time": 300000,
-    "hacking_success_weight": 0,
-    "strength_success_weight": 1,
-    "defense_success_weight": 0,
-    "dexterity_success_weight": 2,
-    "agility_success_weight": 1,
-    "charisma_success_weight": 0,
-    "hacking_exp": 0,
-    "strength_exp": 206.853182588052,
-    "defense_exp": 206.853182588052,
-    "dexterity_exp": 206.853182588052,
-    "agility_exp": 206.853182588052,
-    "charisma_exp": 0,
-    "intelligence_exp": 1.625,
-    "workName": "to assassinate",
-    "tooltipText": "Attempt to assassinate a high-profile target",
-    "type": "Assassination",
-    "money": 4091932.048287283,
-    "difficulty": 8,
-    "karma": 10,
-    "kills": 1,
-    "reputation": 0
-  },
-]
 */
